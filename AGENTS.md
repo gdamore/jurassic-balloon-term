@@ -9,6 +9,10 @@ Jurassic Balloon Term is a Go/tcell terminal game.
 - Add focused unit tests for game logic.
 - Run `go test ./...` and `go vet ./...` before committing.
 
-`proxima5` is an architectural reference, not a source tree to copy wholesale.
-Prefer current tcell v2 APIs and small, explicit components.
+`proxima5` was Garrett's first substantial game and was created mostly over a
+weekend as an exploration of using tcell for games. It is a source of useful
+ideas and behavior, not an architectural blueprint or a source tree to copy
+wholesale. Evaluate its design choices before carrying them forward. Prefer
+current tcell v2 APIs, deterministic timing, tests, and small explicit
+components.
 
