@@ -53,3 +53,8 @@ package boundaries for a maintainable modern implementation.
 
 Licensed under the Apache License, Version 2.0.
 
+## Design documents
+
+- [Jurassic Balloon game-design handoff](docs/JURASSIC_BALLOON_DESIGN_HANDOFF.md)
+- [Source discussion transcript](docs/JURASSIC_BALLOON_SOURCE_TRANSCRIPT.md)
+
