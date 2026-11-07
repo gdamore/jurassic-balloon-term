@@ -5,7 +5,9 @@ A terminal-native version of Jurassic Balloon, built in Go with
 
 This repository currently contains the initial playable workspace: a tcell
 screen, a fixed-timestep game loop, queued terminal events, resize handling,
-and a small model that can be exercised independently of the terminal.
+and a small model that can be exercised independently of the terminal. It also
+includes a terminal-independent sprite engine with animation, velocity,
+layering, transparent cells, and cell-accurate collision detection.
 
 ## Run it
 
@@ -33,6 +35,7 @@ the model testable without a real terminal.
 
 - `cmd/jurassic-balloon-term`: executable entry point
 - `internal/game`: terminal-independent game state and updates
+- `internal/sprite`: animated sprites, scenes, layers, and collisions
 - `internal/ui`: tcell event loop and renderer
 
 Licensed under the Apache License, Version 2.0.

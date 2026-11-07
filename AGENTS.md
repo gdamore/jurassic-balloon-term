@@ -3,6 +3,7 @@
 Jurassic Balloon Term is a Go/tcell terminal game.
 
 - Keep game rules and state in `internal/game`; they must not depend on tcell.
+- Keep reusable animation and collision behavior in `internal/sprite`.
 - Keep terminal input and rendering in `internal/ui`.
 - Preserve the fixed-timestep update model used by the initial app loop.
 - Add focused unit tests for game logic.

@@ -14,15 +14,15 @@ func TestMoveStaysInBounds(t *testing.T) {
 	for range 20 {
 		m.Move(-1, -1)
 	}
-	if m.BalloonX != 0 || m.BalloonY != 0 {
-		t.Fatalf("move above bounds = (%d, %d), want (0, 0)", m.BalloonX, m.BalloonY)
+	if position := m.BalloonPosition(); position.X != 0 || position.Y != 0 {
+		t.Fatalf("move above bounds = %v, want (0, 0)", position)
 	}
 
 	for range 20 {
 		m.Move(1, 1)
 	}
-	if m.BalloonX != 19 || m.BalloonY != 9 {
-		t.Fatalf("move below bounds = (%d, %d), want (19, 9)", m.BalloonX, m.BalloonY)
+	if position := m.BalloonPosition(); position.X != 15 || position.Y != 6 {
+		t.Fatalf("move below bounds = %v, want (15, 6)", position)
 	}
 }
 
@@ -42,7 +42,18 @@ func TestResizeClampsPosition(t *testing.T) {
 	m.Move(100, 100)
 	m.Resize(10, 5)
 
-	if m.BalloonX != 9 || m.BalloonY != 4 {
-		t.Fatalf("position after resize = (%d, %d), want (9, 4)", m.BalloonX, m.BalloonY)
+	if position := m.BalloonPosition(); position.X != 5 || position.Y != 1 {
+		t.Fatalf("position after resize = %v, want (5, 1)", position)
+	}
+}
+
+func TestUpdateAnimatesBalloon(t *testing.T) {
+	m := NewModel(20, 10)
+	if got := m.Sprites()[0].FrameName(); got != "sway-left" {
+		t.Fatalf("initial frame = %q, want sway-left", got)
+	}
+	m.Update(300 * time.Millisecond)
+	if got := m.Sprites()[0].FrameName(); got != "sway-right" {
+		t.Fatalf("frame after update = %q, want sway-right", got)
 	}
 }
