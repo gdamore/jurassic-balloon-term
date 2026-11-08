@@ -61,13 +61,81 @@ func TestTerrainChunksStayConnectedAndReplenish(t *testing.T) {
 }
 
 func TestFarTerrainIncludesCrateredVolcano(t *testing.T) {
-	m := NewModel(80, 24)
-	frame, _ := m.terrain[0].chunks[1].ActiveFrame()
+	m := NewModel(120, 40)
+	frame, _ := m.terrain[0].chunks[4].ActiveFrame()
+	if frame.Height < 16 {
+		t.Fatalf("120x40 cinder-cone frame height = %d, want at least 16 rows", frame.Height)
+	}
 	center := columnHeight(frame, terrainChunkWidth/2)
 	leftPeak := columnHeight(frame, terrainChunkWidth/2-2)
 	rightPeak := columnHeight(frame, terrainChunkWidth/2+2)
 	if center >= leftPeak || center >= rightPeak {
 		t.Fatalf("volcano lacks crater: heights left=%d center=%d right=%d", leftPeak, center, rightPeak)
+	}
+}
+
+func TestFarTerrainCinderConeHasPulsingNoncollidingLava(t *testing.T) {
+	m := NewModel(120, 40)
+	for _, chunk := range m.terrain[0].chunks[:4] {
+		frame, _ := chunk.ActiveFrame()
+		if frameHasStyle(frame, StyleFarTerrainLava) {
+			t.Fatalf("opening terrain chunk %q contains lava", chunk.Name())
+		}
+	}
+	cone := m.terrain[0].chunks[4]
+	x, _ := cone.Position()
+	if x < float64(m.Width) {
+		t.Fatalf("first cinder cone starts at x=%v inside the opening view", x)
+	}
+	if cone.Collidable() {
+		t.Fatal("cinder cone is collidable")
+	}
+	frame, _ := cone.ActiveFrame()
+	if !frameHasStyle(frame, StyleFarTerrainLava) {
+		t.Fatal("cinder cone has no lava flow")
+	}
+	lavaColumns := make(map[int]bool)
+	lavaRows := make(map[int]bool)
+	branched := false
+	for x := range frame.Width {
+		surfaceY := frame.Height - columnHeight(frame, x)
+		for y := range frame.Height {
+			cell := frame.CellAt(x, y)
+			if cell.Style == StyleFarTerrainLava {
+				if y == surfaceY {
+					t.Fatal("lava flow colors the cinder-cone rim")
+				}
+				lavaColumns[x] = true
+				lavaRows[y] = true
+			}
+		}
+	}
+	for y := range frame.Height {
+		cells := 0
+		for x := range frame.Width {
+			if frame.CellAt(x, y).Style == StyleFarTerrainLava {
+				cells++
+			}
+		}
+		if cells >= 2 {
+			branched = true
+			break
+		}
+	}
+	if len(lavaColumns) < 2 || len(lavaRows) < 3 {
+		t.Fatalf("lava channel footprint is %d columns by %d rows, want a descending zigzag", len(lavaColumns), len(lavaRows))
+	}
+	if !branched {
+		t.Fatal("lava channel never splits into two arms")
+	}
+	if frame.Duration <= 0 || frame.Next != "terrain-glow" {
+		t.Fatalf("dim lava frame animation = (%v, %q), want a timed glow", frame.Duration, frame.Next)
+	}
+
+	cone.Update(frame.Duration)
+	glow, _ := cone.ActiveFrame()
+	if cone.FrameName() != "terrain-glow" || !frameHasStyle(glow, StyleFarTerrainLavaGlow) {
+		t.Fatal("lava flow did not pulse to its glow frame")
 	}
 }
 

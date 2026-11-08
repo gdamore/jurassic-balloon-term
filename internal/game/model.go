@@ -29,6 +29,8 @@ const (
 	StyleBalloonShadowFill
 	StyleBalloonShade
 	StyleFlame
+	StyleFlameHot
+	StyleFlameEmber
 	StylePatch
 	StylePilot
 	StyleFarCloud
@@ -48,6 +50,8 @@ const (
 	StyleGroundStrike
 	StylePop
 	StyleFarTerrain
+	StyleFarTerrainLava
+	StyleFarTerrainLavaGlow
 	StyleGroundSurface
 	StyleGroundFill
 	StylePterosaur
@@ -210,7 +214,7 @@ func newBalloon() *sprite.Sprite {
 		"   ╲▲╱   ",
 		"   ╰☺╯   ",
 	)
-	burn1.Duration, burn1.Next = 100*time.Millisecond, "burn-2"
+	burn1.Duration, burn1.Next = 70*time.Millisecond, "burn-2"
 	burn2 := balloonFrame(
 		"  ▗▄▄▄▖  ",
 		" ▟     ▙ ",
@@ -220,7 +224,17 @@ func newBalloon() *sprite.Sprite {
 		"   ╲◆╱   ",
 		"   ╰☺╯   ",
 	)
-	burn2.Duration, burn2.Next = 100*time.Millisecond, "burn-1"
+	burn2.Duration, burn2.Next = 80*time.Millisecond, "burn-3"
+	burn3 := balloonFrame(
+		"  ▗▄▄▄▖  ",
+		" ▟     ▙ ",
+		"▐  ╳    ▌",
+		" ▜     ▛ ",
+		"  ▝▄┴▄▘  ",
+		"   ╲▼╱   ",
+		"   ╰☺╯   ",
+	)
+	burn3.Duration, burn3.Next = 60*time.Millisecond, "burn-1"
 	pop1 := styledFrame(StylePop,
 		"    ✶    ",
 		" ╲  │  ╱ ",
@@ -252,7 +266,7 @@ func newBalloon() *sprite.Sprite {
 	)
 	pop3.Duration, pop3.Next = 350*time.Millisecond, ""
 	for name, frame := range map[string]sprite.Frame{
-		"off": off, "burn-1": burn1, "burn-2": burn2,
+		"off": off, "burn-1": burn1, "burn-2": burn2, "burn-3": burn3,
 		"pop-1": pop1, "pop-2": pop2, "pop-3": pop3,
 	} {
 		if err := balloon.AddFrame(name, frame); err != nil {
@@ -288,8 +302,12 @@ func balloonFrame(rows ...string) sprite.Frame {
 	}
 	for index := range frame.Cells {
 		switch frame.Cells[index].Rune {
-		case '▲', '◆':
+		case '▲':
+			frame.Cells[index].Style = StyleFlameHot
+		case '◆':
 			frame.Cells[index].Style = StyleFlame
+		case '▼':
+			frame.Cells[index].Style = StyleFlameEmber
 		case '╳':
 			frame.Cells[index].Style = StylePatch
 		case '☺':
@@ -546,8 +564,10 @@ func (m *Model) addTerrain() {
 	balloonFrame, _ := m.balloon.ActiveFrame()
 	groundMax := min(5, max((m.Height-balloonFrame.Height)/2, 1))
 	groundMin := min(2, groundMax)
+	farTerrain := newTerrainLayer("far-terrain", 11, -0.55*m.stage.ScrollSpeed/worldScrollSpeed, farTerrainLayer, 1, 9, StyleFarTerrain, StyleFarTerrain, false)
+	farTerrain.frameHeight = min(max(9, m.Height*2/5), 18)
 	m.terrain = []*terrainLayer{
-		newTerrainLayer("far-terrain", 11, -0.55*m.stage.ScrollSpeed/worldScrollSpeed, farTerrainLayer, 1, 9, StyleFarTerrain, StyleFarTerrain, false),
+		farTerrain,
 		newTerrainLayer("ground", 37, -m.stage.ScrollSpeed, groundLayer, groundMin, groundMax, StyleGroundSurface, StyleGroundFill, true),
 	}
 	for _, terrain := range m.terrain {

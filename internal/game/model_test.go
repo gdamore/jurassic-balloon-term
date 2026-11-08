@@ -87,6 +87,14 @@ func TestUpdateAnimatesBalloon(t *testing.T) {
 	if got := m.balloon.FrameName(); got != "burn-2" {
 		t.Fatalf("burner frame after update = %q, want burn-2", got)
 	}
+	m.Update(50 * time.Millisecond)
+	if got := m.balloon.FrameName(); got != "burn-3" {
+		t.Fatalf("burner fade frame = %q, want burn-3", got)
+	}
+	frame, _ := m.balloon.ActiveFrame()
+	if flame := frame.CellAt(4, 5); flame.Rune != '▼' || flame.Style != StyleFlameEmber {
+		t.Fatalf("burner ember = %+v, want red-orange down flame", flame)
+	}
 }
 
 func TestBalloonEnvelopeHasOpaqueFill(t *testing.T) {

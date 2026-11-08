@@ -146,6 +146,9 @@ use a completion flag.
 - The balloon begins resting on the terrain. Stage time, distance, and hazards
   remain stopped until sustained burner heat produces actual lift, so the
   player is not dropped into an immediate fall.
+- The terminal balloon uses a compact three-frame, true-color burner flame.
+  Terminal emoji are avoided because their width and presentation vary by
+  terminal and font.
 - Modern terminal support for key-release events must be recognized. Kitty
   keyboard protocol and Win32 input mode can provide genuine press/release
   behavior. Capability detection and a legacy fallback are appropriate.
@@ -183,6 +186,9 @@ physics.
 - Rain is the chosen storm signal.
 - Volcanoes may create lift while their ejecta creates a simultaneous damage
   hazard. Both the volcano and its effects should be visually understandable.
+- Distant terrain may include decorative cinder cones with narrow, gently
+  pulsing lava flows. These establish volcanic character without adding
+  collision or pyroclastic-eruption gameplay.
 - Predictable motion is important because the balloon reacts with delay.
 
 ### Terminal collision rules
@@ -242,6 +248,9 @@ is a possibility for mobile art, not a terminal requirement.
 #### Terminal
 
 - Go and Tcell.
+- The preferred playfield is 120×40 cells. At startup the game asks Tcell to
+  resize the terminal window to that size; terminals that cannot or will not
+  resize retain their existing dimensions.
 - Proxima 5 is a useful reference for sprites, animation, collision detection,
   layering, and level ideas.
 - Proxima 5 was Garrett’s first substantial game (apart from a number-guessing

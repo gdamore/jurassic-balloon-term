@@ -33,7 +33,9 @@ func (a *App) draw() {
 	balloonHighlightFillStyle := tcell.StyleDefault.Background(color.NewRGBColor(181, 119, 67))
 	balloonShadowFillStyle := tcell.StyleDefault.Background(color.NewRGBColor(101, 64, 55))
 	balloonShadeStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(174, 112, 59)).Bold(true)
-	flameStyle := tcell.StyleDefault.Foreground(tcell.ColorOrange).Bold(true)
+	flameStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(255, 142, 24)).Bold(true)
+	flameHotStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(255, 245, 128)).Bold(true)
+	flameEmberStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(225, 62, 18)).Bold(true)
 	patchStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(190, 52, 55)).Background(envelopeFill).Bold(true)
 	pilotStyle := tcell.StyleDefault.Foreground(tcell.ColorLightCyan).Bold(true)
 	farCloudStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(154, 186, 199))
@@ -53,6 +55,8 @@ func (a *App) draw() {
 	groundStrikeStyle := tcell.StyleDefault.Foreground(tcell.ColorWhite).Background(tcell.ColorOrangeRed).Bold(true)
 	popStyle := tcell.StyleDefault.Foreground(tcell.ColorOrangeRed).Bold(true)
 	farTerrainStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(43, 85, 96))
+	farTerrainLavaStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(178, 55, 25)).Background(color.NewRGBColor(43, 85, 96)).Bold(true)
+	farTerrainLavaGlowStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(255, 118, 28)).Background(color.NewRGBColor(43, 85, 96)).Bold(true)
 	groundSurfaceStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(91, 133, 72))
 	groundFillStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(82, 61, 43))
 	pterosaurBody := color.NewRGBColor(190, 78, 57)
@@ -107,6 +111,8 @@ func (a *App) draw() {
 		game.StyleBalloonShadowFill:            balloonShadowFillStyle,
 		game.StyleBalloonShade:                 balloonShadeStyle,
 		game.StyleFlame:                        flameStyle,
+		game.StyleFlameHot:                     flameHotStyle,
+		game.StyleFlameEmber:                   flameEmberStyle,
 		game.StylePatch:                        patchStyle,
 		game.StylePilot:                        pilotStyle,
 		game.StyleFarCloud:                     farCloudStyle,
@@ -126,6 +132,8 @@ func (a *App) draw() {
 		game.StyleGroundStrike:                 groundStrikeStyle,
 		game.StylePop:                          popStyle,
 		game.StyleFarTerrain:                   farTerrainStyle,
+		game.StyleFarTerrainLava:               farTerrainLavaStyle,
+		game.StyleFarTerrainLavaGlow:           farTerrainLavaGlowStyle,
 		game.StyleGroundSurface:                groundSurfaceStyle,
 		game.StyleGroundFill:                   groundFillStyle,
 		game.StylePterosaur:                    pterosaurStyle,

@@ -10,8 +10,12 @@ import (
 	"github.com/gdamore/tcell/v3"
 )
 
-const updateStep = 33 * time.Millisecond
-const burnerPulse = 300 * time.Millisecond
+const (
+	updateStep      = 33 * time.Millisecond
+	burnerPulse     = 300 * time.Millisecond
+	preferredWidth  = 120
+	preferredHeight = 40
+)
 
 // App coordinates terminal events, fixed simulation updates, and rendering.
 type App struct {
@@ -49,6 +53,10 @@ func (a *App) Run() error {
 	a.screen.SetStyle(tcell.StyleDefault.Background(tcell.ColorBlack).Foreground(tcell.ColorWhite))
 	a.screen.HideCursor()
 	width, height := a.screen.Size()
+	if width != preferredWidth || height != preferredHeight {
+		a.screen.SetSize(preferredWidth, preferredHeight)
+		width, height = a.screen.Size()
+	}
 	a.model = game.NewStageModel(width, height, 0)
 	if a.sound != nil {
 		a.sound.Start()

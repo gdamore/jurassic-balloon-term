@@ -6,6 +6,7 @@ package game
 import (
 	"fmt"
 	"math/rand"
+	"time"
 
 	"github.com/gdamore/jurassic-balloon-term/internal/sprite"
 )
@@ -19,6 +20,7 @@ type terrainLayer struct {
 	speed       float64
 	layer       int
 	maxHeight   int
+	frameHeight int
 	minHeight   int
 	lastHeight  int
 	surface     int
@@ -32,16 +34,17 @@ type terrainLayer struct {
 
 func newTerrainLayer(name string, seed int64, speed float64, layer, minHeight, maxHeight, surface, fill int, hazard bool) *terrainLayer {
 	return &terrainLayer{
-		name:       name,
-		random:     rand.New(rand.NewSource(seed)),
-		speed:      speed,
-		layer:      layer,
-		minHeight:  minHeight,
-		maxHeight:  maxHeight,
-		lastHeight: minHeight,
-		surface:    surface,
-		fill:       fill,
-		hazard:     hazard,
+		name:        name,
+		random:      rand.New(rand.NewSource(seed)),
+		speed:       speed,
+		layer:       layer,
+		minHeight:   minHeight,
+		maxHeight:   maxHeight,
+		frameHeight: maxHeight,
+		lastHeight:  minHeight,
+		surface:     surface,
+		fill:        fill,
+		hazard:      hazard,
 	}
 }
 
@@ -55,6 +58,22 @@ func (t *terrainLayer) addChunk(scene *sprite.Scene, x float64, screenHeight int
 	t.chunkID++
 	frame := t.nextFrame()
 	chunk := sprite.New(fmt.Sprintf("%s-%d", t.name, t.chunkID))
+	if frameHasStyle(frame, StyleFarTerrainLava) {
+		glow := frame
+		glow.Cells = append([]sprite.Cell(nil), frame.Cells...)
+		for index := range glow.Cells {
+			if glow.Cells[index].Style == StyleFarTerrainLava {
+				glow.Cells[index].Style = StyleFarTerrainLavaGlow
+			}
+		}
+		frame.Duration = time.Duration(620+t.random.Intn(181)) * time.Millisecond
+		frame.Next = "terrain-glow"
+		glow.Duration = 280 * time.Millisecond
+		glow.Next = "terrain"
+		if err := chunk.AddFrame("terrain-glow", glow); err != nil {
+			panic(err)
+		}
+	}
 	if err := chunk.AddFrame("terrain", frame); err != nil {
 		panic(err)
 	}
@@ -63,7 +82,7 @@ func (t *terrainLayer) addChunk(scene *sprite.Scene, x float64, screenHeight int
 	}
 	chunk.SetLayer(t.layer)
 	chunk.SetCollidable(t.hazard)
-	chunk.SetPosition(x, float64(screenHeight-t.maxHeight))
+	chunk.SetPosition(x, float64(screenHeight-t.frameHeight))
 	chunk.SetVelocity(t.speed, 0)
 	t.chunks = append(t.chunks, chunk)
 	scene.Add(chunk)
@@ -108,13 +127,17 @@ func (t *terrainLayer) nextFrame() sprite.Frame {
 		heights[x] = height
 	}
 
-	// Every fourth far-terrain chunk carries a broad, cratered volcano.
-	if t.name == "far-terrain" && t.chunkID%4 == 2 {
+	// Starting beyond the opening view, every fourth far-terrain chunk carries
+	// a broad, cratered cinder cone.
+	coneCenter := -1
+	if t.name == "far-terrain" && t.chunkID >= 5 && (t.chunkID-5)%4 == 0 {
 		center := terrainChunkWidth / 2
+		coneCenter = center
 		for x := range heights {
 			distance := abs(x - center)
-			addition := max(0, 8-(distance+1)/2)
-			heights[x] = min(heights[x]+addition, t.maxHeight)
+			rise := t.frameHeight - 1 - t.minHeight
+			coneHeight := t.frameHeight - 1 - distance*rise/(terrainChunkWidth/2)
+			heights[x] = max(heights[x], coneHeight)
 		}
 		rim := min(heights[center-2], heights[center+2])
 		crater := max(t.minHeight, rim-2)
@@ -126,21 +149,84 @@ func (t *terrainLayer) nextFrame() sprite.Frame {
 
 	frame := sprite.Frame{
 		Width:  terrainChunkWidth,
-		Height: t.maxHeight,
-		Cells:  make([]sprite.Cell, terrainChunkWidth*t.maxHeight),
+		Height: t.frameHeight,
+		Cells:  make([]sprite.Cell, terrainChunkWidth*t.frameHeight),
 	}
 	for x, columnHeight := range heights {
-		top := t.maxHeight - columnHeight
+		top := t.frameHeight - columnHeight
 		surface := '▄'
 		if x > 0 {
 			surface = terrainSurface(columnHeight, heights[x-1])
 		}
 		frame.Cells[top*terrainChunkWidth+x] = sprite.Cell{Rune: surface, Style: t.surface}
-		for y := top + 1; y < t.maxHeight; y++ {
+		for y := top + 1; y < t.frameHeight; y++ {
 			frame.Cells[y*terrainChunkWidth+x] = sprite.Cell{Rune: '█', Style: t.fill}
 		}
 	}
+	if coneCenter >= 0 {
+		direction := 1
+		if (t.chunkID/4)%2 == 0 {
+			direction = -1
+		}
+		addLavaChannel(&frame, heights, coneCenter, direction)
+	}
 	return frame
+}
+
+func addLavaChannel(frame *sprite.Frame, heights []int, center, direction int) {
+	startY := frame.Height - heights[center] + 1
+	mainOffsets := []int{0, 1, 2, 1, 0, -1, -2, -1, 0, 1, 0}
+	branchOffsets := []int{0, 1, 2, 3, 4}
+	drawLavaPath(frame, heights, center, direction, startY, mainOffsets)
+	drawLavaPath(frame, heights, center, direction, startY+4, branchOffsets)
+
+	junctionX := center
+	junctionY := startY + 4
+	if junctionY < frame.Height && junctionY > frame.Height-heights[junctionX] {
+		index := junctionY*frame.Width + junctionX
+		frame.Cells[index] = sprite.Cell{Rune: '█', Style: StyleFarTerrainLava}
+	}
+}
+
+func drawLavaPath(frame *sprite.Frame, heights []int, center, direction, startY int, offsets []int) {
+	for step, offset := range offsets {
+		y := startY + step
+		if y >= frame.Height {
+			break
+		}
+		x := center + direction*offset
+		if x < 0 || x >= frame.Width {
+			continue
+		}
+		if y <= frame.Height-heights[x] {
+			continue
+		}
+		index := y*frame.Width + x
+		if frame.Cells[index].Rune == 0 {
+			continue
+		}
+		r := '▌'
+		if step+1 < len(offsets) {
+			nextX := center + direction*offsets[step+1]
+			switch {
+			case nextX > x:
+				r = '▚'
+			case nextX < x:
+				r = '▞'
+			}
+		}
+		frame.Cells[index].Rune = r
+		frame.Cells[index].Style = StyleFarTerrainLava
+	}
+}
+
+func frameHasStyle(frame sprite.Frame, style int) bool {
+	for _, cell := range frame.Cells {
+		if cell.Rune != 0 && cell.Style == style {
+			return true
+		}
+	}
+	return false
 }
 
 func terrainSurface(current, previous int) rune {
@@ -157,7 +243,7 @@ func terrainSurface(current, previous int) rune {
 func (t *terrainLayer) resize(height int) {
 	for _, chunk := range t.chunks {
 		x, _ := chunk.Position()
-		chunk.SetPosition(x, float64(height-t.maxHeight))
+		chunk.SetPosition(x, float64(height-t.frameHeight))
 	}
 }
 
