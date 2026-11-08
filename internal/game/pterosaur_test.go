@@ -49,8 +49,16 @@ func TestPterosaurFlapsWithDynamicMask(t *testing.T) {
 		t.Fatal("gliding wing remains in raised-wing collision mask")
 	}
 	pterosaur.sprite.Update(pterosaurWingUpTime + pterosaurWingDownTime)
+	if got := pterosaur.sprite.FrameName(); got != "call" {
+		t.Fatalf("frame after quick flap = %q, want open-mouth call", got)
+	}
+	call, _ := pterosaur.sprite.ActiveFrame()
+	if call.CellAt(0, 0).Rune != '◂' || call.CellAt(0, 2).Rune != '◂' {
+		t.Fatal("ordinary pterosaur call frame does not open both jaws")
+	}
+	pterosaur.sprite.Update(pterosaurCallTime)
 	if got := pterosaur.sprite.FrameName(); got != "glide" {
-		t.Fatalf("frame after quick flap = %q, want glide", got)
+		t.Fatalf("frame after call = %q, want glide", got)
 	}
 }
 
@@ -68,6 +76,9 @@ func TestPterosaurPathIsBounded(t *testing.T) {
 func TestRedEyePterosaurHasDistinctPaletteAndSpeed(t *testing.T) {
 	pterosaur := newProfiledPterosaurHazard(redEyePterosaurProfile, 20, 8, 0.5)
 	frame, _ := pterosaur.sprite.ActiveFrame()
+	if frame.Width != 18 || frame.Height != redEyePterosaurHeight {
+		t.Fatalf("red-eye size = %dx%d, want 18x%d", frame.Width, frame.Height, redEyePterosaurHeight)
+	}
 
 	if eye := frame.CellAt(2, 1); eye.Rune != '●' || eye.Style != StyleRedEyePterosaurEye {
 		t.Fatalf("eye cell = %+v, want red-eye styling", eye)
@@ -187,7 +198,7 @@ func TestPterosaurLungeProducesGameEvent(t *testing.T) {
 	makeAirborne(m)
 	m.pterosaur.lastFrame = "down"
 	m.pterosaur.sprite.SetPosition(40, 6)
-	if err := m.pterosaur.sprite.SetFrame("glide"); err != nil {
+	if err := m.pterosaur.sprite.SetFrame("call"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -195,12 +206,47 @@ func TestPterosaurLungeProducesGameEvent(t *testing.T) {
 	if events := m.Events(); len(events) != 1 || events[0] != EventPterosaurLunged {
 		t.Fatalf("lunge events = %v, want pterosaur lunge", events)
 	}
+	if m.pterosaur.sprite.FrameName() != "call" {
+		t.Fatalf("cry began on frame %q, want open-mouth call", m.pterosaur.sprite.FrameName())
+	}
 
 	m.pterosaur.lastFrame = "down"
 	m.pterosaur.sprite.SetPosition(float64(m.Width+1), 6)
 	m.Update(time.Millisecond)
 	if events := m.Events(); len(events) != 0 {
 		t.Fatalf("offscreen lunge events = %v, want none", events)
+	}
+}
+
+func TestAuthoredPterosaurGroupsAreLimitedAndStaggered(t *testing.T) {
+	first := NewStageModel(120, 40, 0)
+	first.distance = first.stage.PterosaurGroups[0].Distance
+	first.spawnScheduledPterosaurGroups()
+	if len(first.flock) != 2 {
+		t.Fatalf("Fern Valley flock size = %d, want 2", len(first.flock))
+	}
+	if first.flock[0].sprite.FrameName() != "glide" || first.flock[1].sprite.FrameName() != "delay" {
+		t.Fatalf("Fern Valley flock frames = %q, %q, want staggered starts", first.flock[0].sprite.FrameName(), first.flock[1].sprite.FrameName())
+	}
+	first.spawnScheduledPterosaurGroups()
+	if len(first.flock) != 2 {
+		t.Fatalf("authored flock spawned twice: size %d", len(first.flock))
+	}
+
+	second := NewStageModel(120, 40, 1)
+	second.distance = second.stage.PterosaurGroups[0].Distance
+	second.spawnScheduledPterosaurGroups()
+	if len(second.flock) != 3 {
+		t.Fatalf("Red-Eye Run flock size = %d, want 3", len(second.flock))
+	}
+	redEyes := 0
+	for _, hazard := range second.flock {
+		if hazard.profile.large {
+			redEyes++
+		}
+	}
+	if redEyes != 1 {
+		t.Fatalf("Red-Eye Run flock has %d red-eyes, want 1", redEyes)
 	}
 }
 

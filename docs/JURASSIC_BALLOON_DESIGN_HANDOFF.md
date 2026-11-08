@@ -70,7 +70,11 @@ motion while avoiding aerial, terrain, and altitude hazards.
 - A visible completion flag marks each stage save/unlock boundary. Crossing an
   intermediate flag continues directly into the next stage without pausing or
   returning the balloon to the ground; altitude, heat, burner state, and
-  vertical velocity carry across. Only the final campaign flag stops play.
+  vertical velocity carry across. The crossed flag and visible outgoing
+  scenery, clouds, and enemies keep moving left instead of disappearing;
+  carried enemies remain animated and dangerous until they leave the screen.
+  Replacement stage clouds enter from beyond the right edge. Only the final
+  campaign flag stops play.
   Checkpoints within longer stages are authored section boundaries, initially
   spaced roughly 60–75 seconds apart. Death should eventually offer restart at
   the latest unlocked stage, and unlocked stages remain directly selectable.
@@ -87,9 +91,13 @@ motion while avoiding aerial, terrain, and altitude hazards.
   shading. The grove mixes broadleaf, palm, and cycad silhouettes while
   retaining comparable collision reach.
 - Red-Eye Run introduces a green, red-eyed pterosaur alongside the ordinary
-  variant. It shares the established flap-and-glide silhouette, cruises at
-  twice the ordinary speed, and has a stronger but deliberately capped lunge
-  rather than simply doubling the ordinary boost. Ferns, a mixed line of
+  variant. It uses a larger 18×6 silhouette, cruises at twice the ordinary
+  speed, and has a stronger but deliberately capped lunge rather than simply
+  doubling the ordinary boost. Both pterosaur variants visibly open their
+  mouths for the lunge frame that emits the cry. Fern Valley has one authored
+  pair; Red-Eye Run has one staggered three-member group containing a single
+  red-eye. These flocks are limited encounters, not the default spawn pattern.
+  Ferns, a mixed line of
   dangerous trees, and three more grazer pairs keep its landscape populated.
   Grazer feet overlap the terrain surface slightly so uneven ground never
   makes them appear to hover.
@@ -127,6 +135,15 @@ strong next-mode idea, not yet a committed implementation. It would measure
 survival time/distance and steadily increase encounter difficulty rather than
 use a completion flag.
 
+Later-stage concepts to explore, not current requirements:
+
+- Give Carnivore Country its own more threatening score rather than reusing
+  the clear-weather orchestral track.
+- Add an over-water stage with marine predators and strongly telegraphed
+  waterspouts as vertical hazards.
+- Add Lava Fields with pterosaurs, visible volcanic ejecta, and visually
+  explicit updrafts; avoid surprise forces and pyroclastic-eruption clutter.
+
 ### Flight and controls
 
 - Gravity matters.
@@ -139,10 +156,16 @@ use a completion flag.
   on/off as the primary gameplay input.
 - A start screen precedes the run and offers independent music and sound-effect
   toggles plus room for a short premise blurb.
-- Pterosaur lunges use a short, rough, falling crow-like squawk rather than a
-  long shrill bird scream; overlapping calls are limited to avoid fatigue.
+- Pterosaur lunges use two restrained CC0 designed-dinosaur calls rather than
+  a synthetic squawk or shrill bird scream. Calls are limited to one every 2.2
+  seconds to prevent each flap from becoming an audio interruption; this is
+  characterful game audio, not a claim about reconstructed pterosaur sound.
 - Ordinary daytime ambience uses a continuous CC0 field recording of real
   birds rather than randomized processed creature calls.
+- Clear-weather stages use a low-mixed, gently looped version of Matthew
+  Pablo's slower orchestral "Soliloquy." Fern Valley retains music, but it
+  should sit behind the subdued jungle ambience and gameplay cues rather than
+  compete for attention.
 - The balloon begins resting on the terrain. Stage time, distance, and hazards
   remain stopped until sustained burner heat produces actual lift, so the
   player is not dropped into an immediate fall.
@@ -187,8 +210,9 @@ physics.
 - Volcanoes may create lift while their ejecta creates a simultaneous damage
   hazard. Both the volcano and its effects should be visually understandable.
 - Distant terrain may include decorative cinder cones with narrow, gently
-  pulsing lava flows. These establish volcanic character without adding
-  collision or pyroclastic-eruption gameplay.
+  pulsing, branching lava flows. Sparse variations in cone height, crater
+  profile, channel direction, and branching establish volcanic character
+  across stages without adding collision or pyroclastic-eruption gameplay.
 - Predictable motion is important because the balloon reacts with delay.
 
 ### Terminal collision rules

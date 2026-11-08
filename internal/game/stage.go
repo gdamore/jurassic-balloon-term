@@ -26,23 +26,37 @@ type Stage struct {
 	PersistentRain  bool
 	DarkCloudsOnly  bool
 	Pterosaurs      bool
+	PterosaurGroups []PterosaurGroup
 	ScrollSpeed     float64
 }
 
+// PterosaurGroup describes one authored flock encounter.
+type PterosaurGroup struct {
+	Distance float64
+	Count    int
+	RedEyes  int
+}
+
 var stages = []Stage{
-	withGrazers(
-		withFerns(
-			withTrees(newStage("Fern Valley", 2*time.Minute, time.Minute), 0.52, 0.62, 0.72, 0.82, 0.91),
-			0.06, 0.14, 0.23, 0.33, 0.43,
+	withPterosaurGroups(
+		withGrazers(
+			withFerns(
+				withTrees(newStage("Fern Valley", 2*time.Minute, time.Minute), 0.52, 0.62, 0.72, 0.82, 0.91),
+				0.06, 0.14, 0.23, 0.33, 0.43,
+			),
+			0.10, 0.125, 0.28, 0.305, 0.45, 0.475,
 		),
-		0.10, 0.125, 0.28, 0.305, 0.45, 0.475,
+		pterosaurGroupSpec{fraction: 0.56, count: 2},
 	),
-	withGrazers(
-		withFerns(
-			withTrees(newStage("Red-Eye Run", 150*time.Second, 75*time.Second), 0.16, 0.34, 0.52, 0.70, 0.88),
-			0.05, 0.22, 0.42, 0.63, 0.82,
+	withPterosaurGroups(
+		withGrazers(
+			withFerns(
+				withTrees(newStage("Red-Eye Run", 150*time.Second, 75*time.Second), 0.16, 0.34, 0.52, 0.70, 0.88),
+				0.05, 0.22, 0.42, 0.63, 0.82,
+			),
+			0.10, 0.125, 0.43, 0.455, 0.76, 0.785,
 		),
-		0.10, 0.125, 0.43, 0.455, 0.76, 0.785,
+		pterosaurGroupSpec{fraction: 0.61, count: 3, redEyes: 1},
 	),
 	withGrazers(
 		withStorm(
@@ -56,6 +70,24 @@ var stages = []Stage{
 	),
 	newStage("Long-Neck Grove", 210*time.Second, 70*time.Second, 140*time.Second),
 	newStage("Carnivore Country", 4*time.Minute, time.Minute, 2*time.Minute, 3*time.Minute),
+}
+
+type pterosaurGroupSpec struct {
+	fraction float64
+	count    int
+	redEyes  int
+}
+
+func withPterosaurGroups(stage Stage, specs ...pterosaurGroupSpec) Stage {
+	stage.PterosaurGroups = make([]PterosaurGroup, len(specs))
+	for index, spec := range specs {
+		stage.PterosaurGroups[index] = PterosaurGroup{
+			Distance: stage.GoalDistance * spec.fraction,
+			Count:    spec.count,
+			RedEyes:  spec.redEyes,
+		}
+	}
+	return stage
 }
 
 func withStorm(stage Stage, fronts int) Stage {
@@ -137,5 +169,6 @@ func StageAt(index int) Stage {
 	stage.TreeDistances = append([]float64(nil), stage.TreeDistances...)
 	stage.FernDistances = append([]float64(nil), stage.FernDistances...)
 	stage.GrazerDistances = append([]float64(nil), stage.GrazerDistances...)
+	stage.PterosaurGroups = append([]PterosaurGroup(nil), stage.PterosaurGroups...)
 	return stage
 }

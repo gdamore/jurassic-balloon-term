@@ -30,6 +30,7 @@ type terrainLayer struct {
 	target      int
 	segmentLeft int
 	slopePhase  int
+	coneVariant int
 }
 
 func newTerrainLayer(name string, seed int64, speed float64, layer, minHeight, maxHeight, surface, fill int, hazard bool) *terrainLayer {
@@ -127,20 +128,29 @@ func (t *terrainLayer) nextFrame() sprite.Frame {
 		heights[x] = height
 	}
 
-	// Starting beyond the opening view, every fourth far-terrain chunk carries
+	// Starting beyond the opening view, every other far-terrain chunk carries
 	// a broad, cratered cinder cone.
 	coneCenter := -1
-	if t.name == "far-terrain" && t.chunkID >= 5 && (t.chunkID-5)%4 == 0 {
-		center := terrainChunkWidth / 2
+	coneVariant := 0
+	if t.name == "far-terrain" && t.chunkID >= 5 && (t.chunkID-5)%2 == 0 {
+		coneIndex := (t.chunkID - 5) / 2
+		coneVariant = (coneIndex + t.coneVariant) % 3
+		centerOffsets := [...]int{-2, 1, 0}
+		peakInsets := [...]int{1, 2, 1}
+		craterWidths := [...]int{2, 3, 2}
+		craterDepths := [...]int{2, 1, 3}
+		center := terrainChunkWidth/2 + centerOffsets[coneVariant]
 		coneCenter = center
 		for x := range heights {
 			distance := abs(x - center)
-			rise := t.frameHeight - 1 - t.minHeight
-			coneHeight := t.frameHeight - 1 - distance*rise/(terrainChunkWidth/2)
+			peak := t.frameHeight - peakInsets[coneVariant]
+			rise := peak - t.minHeight
+			coneHeight := peak - distance*rise/(terrainChunkWidth/2)
 			heights[x] = max(heights[x], coneHeight)
 		}
-		rim := min(heights[center-2], heights[center+2])
-		crater := max(t.minHeight, rim-2)
+		craterWidth := craterWidths[coneVariant]
+		rim := min(heights[center-craterWidth], heights[center+craterWidth])
+		crater := max(t.minHeight, rim-craterDepths[coneVariant])
 		heights[center] = crater
 		heights[center-1] = min(heights[center-1], crater+1)
 		heights[center+1] = min(heights[center+1], crater+1)
@@ -165,18 +175,23 @@ func (t *terrainLayer) nextFrame() sprite.Frame {
 	}
 	if coneCenter >= 0 {
 		direction := 1
-		if (t.chunkID/4)%2 == 0 {
+		if ((t.chunkID-5)/2+t.coneVariant)%2 != 0 {
 			direction = -1
 		}
-		addLavaChannel(&frame, heights, coneCenter, direction)
+		addLavaChannel(&frame, heights, coneCenter, direction, coneVariant)
 	}
 	return frame
 }
 
-func addLavaChannel(frame *sprite.Frame, heights []int, center, direction int) {
-	startY := frame.Height - heights[center] + 1
+func addLavaChannel(frame *sprite.Frame, heights []int, center, direction, variant int) {
+	startDrops := [...]int{1, 2, 1}
+	branchLengths := [...]int{5, 4, 6}
+	startY := frame.Height - heights[center] + startDrops[variant]
 	mainOffsets := []int{0, 1, 2, 1, 0, -1, -2, -1, 0, 1, 0}
-	branchOffsets := []int{0, 1, 2, 3, 4}
+	branchOffsets := make([]int, branchLengths[variant])
+	for index := range branchOffsets {
+		branchOffsets[index] = index
+	}
 	drawLavaPath(frame, heights, center, direction, startY, mainOffsets)
 	drawLavaPath(frame, heights, center, direction, startY+4, branchOffsets)
 

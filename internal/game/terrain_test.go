@@ -60,17 +60,39 @@ func TestTerrainChunksStayConnectedAndReplenish(t *testing.T) {
 	}
 }
 
-func TestFarTerrainIncludesCrateredVolcano(t *testing.T) {
+func TestFarTerrainIncludesCrateredCinderCone(t *testing.T) {
 	m := NewModel(120, 40)
 	frame, _ := m.terrain[0].chunks[4].ActiveFrame()
 	if frame.Height < 16 {
 		t.Fatalf("120x40 cinder-cone frame height = %d, want at least 16 rows", frame.Height)
 	}
-	center := columnHeight(frame, terrainChunkWidth/2)
-	leftPeak := columnHeight(frame, terrainChunkWidth/2-2)
-	rightPeak := columnHeight(frame, terrainChunkWidth/2+2)
-	if center >= leftPeak || center >= rightPeak {
-		t.Fatalf("volcano lacks crater: heights left=%d center=%d right=%d", leftPeak, center, rightPeak)
+	center := terrainChunkWidth/2 - 2
+	crater := columnHeight(frame, center)
+	leftPeak := columnHeight(frame, center-2)
+	rightPeak := columnHeight(frame, center+2)
+	if crater >= leftPeak || crater >= rightPeak {
+		t.Fatalf("cinder cone lacks crater: heights left=%d center=%d right=%d", leftPeak, crater, rightPeak)
+	}
+}
+
+func TestCinderConeProfilesVaryAcrossStages(t *testing.T) {
+	models := []*Model{
+		NewStageModel(120, 40, 0),
+		NewStageModel(120, 40, 1),
+		NewStageModel(120, 40, 2),
+	}
+	for index, model := range models {
+		frame, _ := model.terrain[0].chunks[4].ActiveFrame()
+		if !frameHasStyle(frame, StyleFarTerrainLava) {
+			t.Fatalf("stage %d cinder cone has no lava", index+1)
+		}
+	}
+	for index := 1; index < len(models); index++ {
+		previous, _ := models[index-1].terrain[0].chunks[4].ActiveFrame()
+		current, _ := models[index].terrain[0].chunks[4].ActiveFrame()
+		if framesHaveSameCells(previous, current) {
+			t.Fatalf("stages %d and %d use identical cinder cones", index, index+1)
+		}
 	}
 }
 
@@ -207,4 +229,16 @@ func firstOpaqueCell(frame sprite.Frame) (int, int) {
 		}
 	}
 	return 0, 0
+}
+
+func framesHaveSameCells(left, right sprite.Frame) bool {
+	if left.Width != right.Width || left.Height != right.Height || len(left.Cells) != len(right.Cells) {
+		return false
+	}
+	for index := range left.Cells {
+		if left.Cells[index] != right.Cells[index] {
+			return false
+		}
+	}
+	return true
 }

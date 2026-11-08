@@ -22,8 +22,7 @@ func newGameSound() (*gameSound, error) {
 
 func (s *gameSound) Start() {
 	_ = s.engine.Resume()
-	_ = s.engine.SetEnvironment(audio.EnvironmentPrehistoricDay)
-	_ = s.engine.SetMusic(audio.MusicClearSkies)
+	s.SetStage(0)
 }
 
 func (s *gameSound) SetBurner(enabled bool) {
@@ -74,17 +73,23 @@ func (s *gameSound) SetEffectsEnabled(enabled bool) {
 func (s *gameSound) SetStage(stageIndex int) {
 	if stageIndex == 2 {
 		_ = s.engine.SetEnvironment(audio.EnvironmentStorm)
-		_ = s.engine.SetMusic(audio.MusicThreat)
-		return
+	} else {
+		_ = s.engine.SetEnvironment(audio.EnvironmentPrehistoricDay)
 	}
-	_ = s.engine.SetEnvironment(audio.EnvironmentPrehistoricDay)
-	_ = s.engine.SetMusic(audio.MusicClearSkies)
+	_ = s.engine.SetMusic(musicForStage(stageIndex))
 }
 
 func (s *gameSound) Retry() {
 	_ = s.engine.SetContinuous(audio.ContinuousBurner, false)
-	_ = s.engine.SetEnvironment(audio.EnvironmentPrehistoricDay)
-	_ = s.engine.SetMusic(audio.MusicClearSkies)
+}
+
+func musicForStage(stageIndex int) audio.Music {
+	switch stageIndex {
+	case 2:
+		return audio.MusicThreat
+	default:
+		return audio.MusicClearSkies
+	}
 }
 
 func (s *gameSound) SetPaused(paused bool) {

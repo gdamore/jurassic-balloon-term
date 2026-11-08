@@ -116,38 +116,42 @@ type Model struct {
 	Paused  bool
 	Elapsed time.Duration
 
-	scene        *sprite.Scene
-	balloon      *sprite.Sprite
-	clouds       []cloudTrack
-	storm        *stormHazard
-	storms       []*stormHazard
-	groundStorms []*groundStormHazard
-	rain         *sprite.Sprite
-	ceiling      *ceilingStorm
-	pterosaur    *pterosaurHazard
-	redEye       *pterosaurHazard
-	finish       *sprite.Sprite
-	trees        []treeTrack
-	ferns        []fernTrack
-	grazers      []grazerTrack
-	terrain      []*terrainLayer
-	random       *rand.Rand
-	cloudID      int
-	burner       bool
-	heat         float64
-	vy           float64
-	popped       bool
-	stopped      bool
-	popTime      time.Duration
-	events       []Event
-	stage        Stage
-	stageIndex   int
-	distance     float64
-	completed    bool
-	grounded     bool
-	scrollSpeed  float64
-	transition   *stageTransition
-	departing    []*sprite.Sprite
+	scene               *sprite.Scene
+	balloon             *sprite.Sprite
+	clouds              []cloudTrack
+	storm               *stormHazard
+	storms              []*stormHazard
+	groundStorms        []*groundStormHazard
+	rain                *sprite.Sprite
+	ceiling             *ceilingStorm
+	pterosaur           *pterosaurHazard
+	redEye              *pterosaurHazard
+	flock               []*pterosaurHazard
+	nextPterosaurGroup  int
+	finish              *sprite.Sprite
+	trees               []treeTrack
+	ferns               []fernTrack
+	grazers             []grazerTrack
+	terrain             []*terrainLayer
+	random              *rand.Rand
+	cloudID             int
+	burner              bool
+	heat                float64
+	vy                  float64
+	popped              bool
+	stopped             bool
+	popTime             time.Duration
+	events              []Event
+	stage               Stage
+	stageIndex          int
+	distance            float64
+	completed           bool
+	grounded            bool
+	scrollSpeed         float64
+	transition          *stageTransition
+	departing           []*sprite.Sprite
+	departingHazards    map[*sprite.Sprite]struct{}
+	departingPterosaurs []*pterosaurHazard
 }
 
 // NewModel creates a model centered in the supplied play field.
@@ -564,8 +568,9 @@ func (m *Model) addTerrain() {
 	balloonFrame, _ := m.balloon.ActiveFrame()
 	groundMax := min(5, max((m.Height-balloonFrame.Height)/2, 1))
 	groundMin := min(2, groundMax)
-	farTerrain := newTerrainLayer("far-terrain", 11, -0.55*m.stage.ScrollSpeed/worldScrollSpeed, farTerrainLayer, 1, 9, StyleFarTerrain, StyleFarTerrain, false)
+	farTerrain := newTerrainLayer("far-terrain", 11+int64(m.stageIndex)*101, -0.55*m.stage.ScrollSpeed/worldScrollSpeed, farTerrainLayer, 1, 9, StyleFarTerrain, StyleFarTerrain, false)
 	farTerrain.frameHeight = min(max(9, m.Height*2/5), 18)
+	farTerrain.coneVariant = m.stageIndex % 3
 	m.terrain = []*terrainLayer{
 		farTerrain,
 		newTerrainLayer("ground", 37, -m.stage.ScrollSpeed, groundLayer, groundMin, groundMax, StyleGroundSurface, StyleGroundFill, true),
@@ -655,7 +660,7 @@ func (m *Model) spawnPterosaur(x float64) {
 		m.scene.Remove(m.pterosaur.sprite)
 	}
 	yFraction := 0.1 + m.random.Float64()*0.8
-	m.pterosaur = newPterosaurHazard(x, m.pterosaurY(yFraction), yFraction)
+	m.pterosaur = newPterosaurHazard(x, m.pterosaurY(yFraction, pterosaurHeight), yFraction)
 	m.scene.Add(m.pterosaur.sprite)
 }
 
@@ -664,17 +669,46 @@ func (m *Model) spawnRedEye(x float64) {
 		m.scene.Remove(m.redEye.sprite)
 	}
 	yFraction := 0.1 + m.random.Float64()*0.8
-	m.redEye = newProfiledPterosaurHazard(redEyePterosaurProfile, x, m.pterosaurY(yFraction), yFraction)
+	m.redEye = newProfiledPterosaurHazard(redEyePterosaurProfile, x, m.pterosaurY(yFraction, redEyePterosaurHeight), yFraction)
 	m.scene.Add(m.redEye.sprite)
 }
 
-func (m *Model) pterosaurY(fraction float64) float64 {
+func (m *Model) spawnScheduledPterosaurGroups() {
+	for m.nextPterosaurGroup < len(m.stage.PterosaurGroups) {
+		group := m.stage.PterosaurGroups[m.nextPterosaurGroup]
+		if m.distance < group.Distance {
+			return
+		}
+		m.nextPterosaurGroup++
+		baseFraction := 0.22 + m.random.Float64()*0.50
+		formation := [...]float64{-0.08, 0.08, 0}
+		for index := range group.Count {
+			profile := ordinaryPterosaurProfile
+			if index >= group.Count-group.RedEyes {
+				profile = redEyePterosaurProfile
+			}
+			fraction := min(max(baseFraction+formation[index%len(formation)], 0.1), 0.9)
+			delay := time.Duration(index) * 450 * time.Millisecond
+			hazard := newProfiledPterosaurHazardWithDelay(
+				profile,
+				float64(m.Width+2+index*6),
+				m.pterosaurY(fraction, profileHeight(profile)),
+				fraction,
+				delay,
+			)
+			m.flock = append(m.flock, hazard)
+			m.scene.Add(hazard.sprite)
+		}
+	}
+}
+
+func (m *Model) pterosaurY(fraction float64, height int) float64 {
 	groundHeight := 0
 	if len(m.terrain) != 0 {
 		groundHeight = m.terrain[len(m.terrain)-1].maxHeight
 	}
 	minY := 2
-	maxY := max(minY, m.Height-groundHeight-pterosaurHeight-1)
+	maxY := max(minY, m.Height-groundHeight-height-1)
 	return float64(minY) + float64(maxY-minY)*fraction
 }
 
@@ -723,10 +757,13 @@ func (m *Model) Resize(width, height int) {
 		m.resetCeilingStorm()
 	}
 	if m.pterosaur != nil {
-		m.pterosaur.setBaseY(m.pterosaurY(m.pterosaur.yFraction))
+		m.pterosaur.setBaseY(m.pterosaurY(m.pterosaur.yFraction, pterosaurHeight))
 	}
 	if m.redEye != nil {
-		m.redEye.setBaseY(m.pterosaurY(m.redEye.yFraction))
+		m.redEye.setBaseY(m.pterosaurY(m.redEye.yFraction, redEyePterosaurHeight))
+	}
+	for _, hazard := range m.flock {
+		hazard.setBaseY(m.pterosaurY(hazard.yFraction, hazardHeight(hazard)))
 	}
 	if m.finish != nil {
 		m.positionFinishFlag()
@@ -862,6 +899,7 @@ func (m *Model) Update(step time.Duration) []sprite.Collision {
 	m.Elapsed += step
 	m.updateStageTransition(step)
 	m.distance = min(m.distance+m.scrollSpeed*step.Seconds(), m.stage.GoalDistance)
+	m.spawnScheduledPterosaurGroups()
 	m.clipGroundStormsToTerrain()
 	for _, storm := range m.storms {
 		if storm.updatePhase(step) {
@@ -886,8 +924,17 @@ func (m *Model) Update(step time.Duration) []sprite.Collision {
 			m.events = append(m.events, EventLightningStruck)
 		}
 	}
-	for _, hazard := range []*pterosaurHazard{m.pterosaur, m.redEye} {
+	for _, hazard := range append([]*pterosaurHazard{m.pterosaur, m.redEye}, m.flock...) {
 		if hazard != nil && hazard.updatePath(step) {
+			x, _ := hazard.sprite.Position()
+			frame, _ := hazard.sprite.ActiveFrame()
+			if x < float64(m.Width) && x+float64(frame.Width) > 0 {
+				m.events = append(m.events, EventPterosaurLunged)
+			}
+		}
+	}
+	for _, hazard := range m.departingPterosaurs {
+		if hazard.updatePath(step) {
 			x, _ := hazard.sprite.Position()
 			frame, _ := hazard.sprite.ActiveFrame()
 			if x < float64(m.Width) && x+float64(frame.Width) > 0 {
@@ -902,7 +949,7 @@ func (m *Model) Update(step time.Duration) []sprite.Collision {
 	m.anchorGrazers()
 	for _, collision := range collisions {
 		other, hitsBalloon := collisionWith(m.balloon, collision)
-		if hitsBalloon && (m.isLightningHazard(other) || m.isGroundStormHazard(other) || m.isCeilingHazard(other) || m.isPterosaurHazard(other) || m.isGroundHazard(other)) {
+		if hitsBalloon && (m.isLightningHazard(other) || m.isGroundStormHazard(other) || m.isCeilingHazard(other) || m.isPterosaurHazard(other) || m.isGroundHazard(other) || m.isDepartingHazard(other)) {
 			m.popBalloon()
 			break
 		}
@@ -959,6 +1006,17 @@ func (m *Model) Update(step time.Duration) []sprite.Collision {
 			m.spawnRedEye(float64(m.Width + gap))
 		}
 	}
+	keptFlock := m.flock[:0]
+	for _, hazard := range m.flock {
+		x, _ := hazard.sprite.Position()
+		frame, _ := hazard.sprite.ActiveFrame()
+		if x+float64(frame.Width) < 0 {
+			m.scene.Remove(hazard.sprite)
+			continue
+		}
+		keptFlock = append(keptFlock, hazard)
+	}
+	m.flock = keptFlock
 	for _, terrain := range m.terrain {
 		terrain.replenish(m.scene, m.Width, m.Height)
 	}
@@ -985,7 +1043,20 @@ func collisionWith(target *sprite.Sprite, collision sprite.Collision) (*sprite.S
 }
 
 func (m *Model) isPterosaurHazard(candidate *sprite.Sprite) bool {
-	return m.pterosaur != nil && candidate == m.pterosaur.sprite || m.redEye != nil && candidate == m.redEye.sprite
+	if m.pterosaur != nil && candidate == m.pterosaur.sprite || m.redEye != nil && candidate == m.redEye.sprite {
+		return true
+	}
+	for _, hazard := range m.flock {
+		if candidate == hazard.sprite {
+			return true
+		}
+	}
+	return false
+}
+
+func (m *Model) isDepartingHazard(candidate *sprite.Sprite) bool {
+	_, hazardous := m.departingHazards[candidate]
+	return hazardous
 }
 
 func (m *Model) isLightningHazard(candidate *sprite.Sprite) bool {

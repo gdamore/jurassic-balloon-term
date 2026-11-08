@@ -45,7 +45,7 @@ func Catalog() audio.Catalog {
 		Sounds: map[audio.SoundID]audio.Sound{
 			soundClear: {
 				Variants: []audio.Clip{recorded("music_clear.ogg")},
-				Bus:      audio.BusMusic, Gain: 0.72, Loop: true,
+				Bus:      audio.BusMusic, Gain: 0.42, Loop: true,
 			},
 			soundThreat: {
 				Variants: []audio.Clip{recorded("music_threat.ogg")},
@@ -107,15 +107,15 @@ func Catalog() audio.Catalog {
 			},
 			soundPterosaur: {
 				Variants: []audio.Clip{
-					{PCM: crowSquawk(760, 330, 320*time.Millisecond, 0.42, 29)},
-					{PCM: crowSquawk(860, 380, 270*time.Millisecond, 0.40, 47)},
+					recorded("effect_pterosaur_1.ogg"),
+					recorded("effect_pterosaur_2.ogg"),
 				},
-				Bus: audio.BusEffects, Gain: 0.78, MaxVoices: 1, Cooldown: 400 * time.Millisecond,
+				Bus: audio.BusEffects, Gain: 0.65, MaxVoices: 1, Cooldown: 2200 * time.Millisecond,
 			},
 			soundPterosaurFar: {
 				Variants: []audio.Clip{
-					{PCM: crowSquawk(440, 210, 380*time.Millisecond, 0.26, 71)},
-					{PCM: crowSquawk(485, 225, 330*time.Millisecond, 0.24, 83)},
+					recorded("effect_pterosaur_1.ogg"),
+					recorded("effect_pterosaur_2.ogg"),
 				},
 				Bus: audio.BusAmbience, Gain: 0.12, MaxVoices: 1, Cooldown: 3 * time.Second,
 			},
@@ -239,34 +239,6 @@ func chirp(start, end float64, duration time.Duration, gain float64) []float32 {
 		frequency := start + (end-start)*progress
 		phase += 2 * math.Pi * frequency / audio.DefaultSampleRate
 		putStereo(pcm, frame, math.Sin(phase)*gain*edgeEnvelope(frame, frames, 0.12))
-	}
-	return pcm
-}
-
-func crowSquawk(start, end float64, duration time.Duration, gain float64, seed int64) []float32 {
-	frames := durationFrames(duration)
-	pcm := make([]float32, frames*2)
-	random := rand.New(rand.NewSource(seed))
-	phase := 0.0
-	rasp := 0.0
-	for frame := range frames {
-		progress := float64(frame) / float64(frames)
-		frequency := start * math.Pow(end/start, progress)
-		frequency *= 1 + 0.035*math.Sin(progress*math.Pi*13)
-		phase += 2 * math.Pi * frequency / audio.DefaultSampleRate
-		rasp += (random.Float64()*2 - 1 - rasp) * 0.3
-
-		// A crow-like call has a hard onset, a short falling throat tone,
-		// rough harmonics, and a noisy tail rather than a long clean scream.
-		attack := min(progress/0.015, 1)
-		release := min((1-progress)/0.08, 1)
-		decay := math.Exp(-2.8 * progress)
-		throat := 0.45*math.Sin(phase) + 0.30*math.Sin(phase*2.07) + 0.18*math.Sin(phase*3.91) + 0.10*math.Sin(phase*6.2)
-		roughness := 0.7 + 0.3*math.Sin(progress*math.Pi*17)
-		tail := math.Pow(progress, 1.7) * rasp * 0.32
-		onset := rasp * math.Exp(-22*progress) * 0.45
-		sample := (throat*roughness + onset + tail) * gain * attack * decay * release
-		putStereo(pcm, frame, sample)
 	}
 	return pcm
 }

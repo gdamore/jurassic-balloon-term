@@ -3,7 +3,11 @@
 
 package game
 
-import "time"
+import (
+	"time"
+
+	"github.com/gdamore/jurassic-balloon-term/internal/sprite"
+)
 
 const stageTransitionDuration = 2 * time.Second
 
@@ -23,44 +27,82 @@ func (m *Model) inheritWorld(previous *Model) {
 		}
 	}
 	m.terrain = previous.terrain
+	if len(m.terrain) != 0 {
+		m.terrain[0].coneVariant = m.stageIndex % 3
+	}
 	for _, terrain := range m.terrain {
 		for _, chunk := range terrain.chunks {
 			m.scene.Add(chunk)
 		}
 	}
 
-	if previous.stage.DarkCloudsOnly || m.stage.DarkCloudsOnly {
-		for _, cloud := range previous.clouds {
-			if _, visible := cloud.sprite.ActiveFrame(); visible {
-				m.scene.Add(cloud.sprite)
-				m.departing = append(m.departing, cloud.sprite)
-			}
+	for _, cloud := range previous.clouds {
+		m.carryDeparting(cloud.sprite, false)
+	}
+	for _, storm := range previous.storms {
+		if storm == nil {
+			continue
 		}
-		for _, storm := range previous.storms {
-			if storm == nil {
-				continue
-			}
-			storm.bolt.Hide()
-			m.scene.Add(storm.cloud)
-			m.departing = append(m.departing, storm.cloud)
-		}
-		for _, storm := range previous.groundStorms {
-			storm.bolt.Hide()
-			storm.impact.Hide()
-			m.scene.Add(storm.cloud)
-			m.departing = append(m.departing, storm.cloud)
-		}
-		for _, hazard := range []*pterosaurHazard{previous.pterosaur, previous.redEye} {
-			if hazard != nil {
-				m.scene.Add(hazard.sprite)
-				m.departing = append(m.departing, hazard.sprite)
-			}
+		storm.bolt.Hide()
+		m.carryDeparting(storm.cloud, false)
+	}
+	for _, storm := range previous.groundStorms {
+		storm.bolt.Hide()
+		storm.impact.Hide()
+		m.carryDeparting(storm.cloud, false)
+	}
+	for _, hazard := range append([]*pterosaurHazard{previous.pterosaur, previous.redEye}, previous.flock...) {
+		if hazard != nil && m.carryDeparting(hazard.sprite, true) {
+			m.departingPterosaurs = append(m.departingPterosaurs, hazard)
 		}
 	}
+	for _, tree := range previous.trees {
+		m.carryDeparting(tree.sprite, true)
+	}
+	for _, fern := range previous.ferns {
+		m.carryDeparting(fern.sprite, false)
+	}
+	for _, grazer := range previous.grazers {
+		m.carryDeparting(grazer.sprite, true)
+	}
+	m.carryDeparting(previous.finish, false)
 	for _, item := range previous.departing {
-		m.scene.Add(item)
-		m.departing = append(m.departing, item)
+		_, hazardous := previous.departingHazards[item]
+		m.carryDeparting(item, hazardous)
 	}
+	for _, hazard := range previous.departingPterosaurs {
+		if _, carried := m.departingHazards[hazard.sprite]; carried {
+			m.departingPterosaurs = append(m.departingPterosaurs, hazard)
+		}
+	}
+}
+
+func (m *Model) carryDeparting(item *sprite.Sprite, hazardous bool) bool {
+	if item == nil {
+		return false
+	}
+	frame, visible := item.ActiveFrame()
+	if !visible {
+		return false
+	}
+	x, _ := item.Position()
+	if x+float64(frame.Width) < 0 || x >= float64(m.Width) {
+		return false
+	}
+	m.scene.Add(item)
+	for _, existing := range m.departing {
+		if existing == item {
+			return true
+		}
+	}
+	m.departing = append(m.departing, item)
+	if hazardous {
+		if m.departingHazards == nil {
+			m.departingHazards = make(map[*sprite.Sprite]struct{})
+		}
+		m.departingHazards[item] = struct{}{}
+	}
+	return true
 }
 
 func (m *Model) beginStageTransition(previous *Model) {
@@ -76,7 +118,7 @@ func (m *Model) beginStageTransition(previous *Model) {
 			storm.setPosition(float64(m.Width+10+index*24), m.cloudY(storm.yFraction, 5))
 		}
 	}
-	if previous.stage.DarkCloudsOnly && !m.stage.DarkCloudsOnly {
+	if !m.stage.DarkCloudsOnly {
 		for index, cloud := range m.clouds {
 			_, y := cloud.sprite.Position()
 			cloud.sprite.SetPosition(float64(m.Width+10+index*18), y)
@@ -194,14 +236,23 @@ func (m *Model) updateDepartingScenery() {
 		frame, visible := item.ActiveFrame()
 		if !visible {
 			m.scene.Remove(item)
+			delete(m.departingHazards, item)
 			continue
 		}
 		x, _ := item.Position()
 		if x+float64(frame.Width) < 0 {
 			m.scene.Remove(item)
+			delete(m.departingHazards, item)
 			continue
 		}
 		kept = append(kept, item)
 	}
 	m.departing = kept
+	keptPterosaurs := m.departingPterosaurs[:0]
+	for _, hazard := range m.departingPterosaurs {
+		if _, active := m.departingHazards[hazard.sprite]; active {
+			keptPterosaurs = append(keptPterosaurs, hazard)
+		}
+	}
+	m.departingPterosaurs = keptPterosaurs
 }

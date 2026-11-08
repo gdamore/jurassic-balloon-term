@@ -32,9 +32,20 @@ func TestGroundStrikeUsesDedicatedRecordedCue(t *testing.T) {
 	}
 }
 
-func TestPterosaurCallIsShortCrowLikeCue(t *testing.T) {
+func TestClearMusicIsLongQuietLoop(t *testing.T) {
+	music := Catalog().Sounds[soundClear]
+	if !music.Loop || music.Gain > 0.45 || len(music.Variants) != 1 {
+		t.Fatalf("clear music = loop:%t gain:%v variants:%d", music.Loop, music.Gain, len(music.Variants))
+	}
+	duration := time.Duration(len(music.Variants[0].PCM)/audio.DefaultChannels) * time.Second / audio.DefaultSampleRate
+	if duration < 3*time.Minute {
+		t.Fatalf("clear music duration = %v, want a long-form loop", duration)
+	}
+}
+
+func TestPterosaurCallUsesSpacedRecordedVariants(t *testing.T) {
 	sound := Catalog().Sounds[soundPterosaur]
-	if sound.Gain < 0.7 || sound.MaxVoices != 1 || sound.Cooldown < 400*time.Millisecond {
+	if sound.Gain > 0.7 || sound.MaxVoices != 1 || sound.Cooldown < 2*time.Second {
 		t.Fatalf("pterosaur mix = gain:%v voices:%d cooldown:%v", sound.Gain, sound.MaxVoices, sound.Cooldown)
 	}
 	if len(sound.Variants) != 2 {
@@ -42,27 +53,9 @@ func TestPterosaurCallIsShortCrowLikeCue(t *testing.T) {
 	}
 	for index, variant := range sound.Variants {
 		duration := time.Duration(len(variant.PCM)/audio.DefaultChannels) * time.Second / audio.DefaultSampleRate
-		if duration < 250*time.Millisecond || duration > 400*time.Millisecond {
-			t.Errorf("variant %d duration = %v, want a short squawk", index, duration)
+		if duration < 1700*time.Millisecond || duration > 2200*time.Millisecond {
+			t.Errorf("variant %d duration = %v, want an isolated two-second call", index, duration)
 		}
-	}
-}
-
-func TestCrowSquawkIsDeterministicAndDecays(t *testing.T) {
-	first := crowSquawk(760, 330, 320*time.Millisecond, 0.42, 29)
-	second := crowSquawk(760, 330, 320*time.Millisecond, 0.42, 29)
-	if len(first) == 0 || len(first) != len(second) {
-		t.Fatalf("squawk lengths = %d and %d", len(first), len(second))
-	}
-	for index := range first {
-		if first[index] != second[index] {
-			t.Fatalf("squawk differs at sample %d", index)
-		}
-	}
-	attackFrames := durationFrames(80 * time.Millisecond)
-	tailFrames := durationFrames(80 * time.Millisecond)
-	if rms(first[:attackFrames*audio.DefaultChannels]) <= rms(first[len(first)-tailFrames*audio.DefaultChannels:]) {
-		t.Fatal("squawk tail does not decay below its attack")
 	}
 }
 

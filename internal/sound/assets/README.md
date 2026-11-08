@@ -14,7 +14,7 @@ described below. `SHA256SUMS` records the exact derived files in this directory.
 
 | Derived file | Source work and creator | Upstream file SHA-256 | Changes |
 | --- | --- | --- | --- |
-| `music_clear.ogg` | [Flowerbed Fields](https://opengameart.org/content/flowerbed-fields-loop), Zane Little Music, lossless WAV source | `335dd7dee07e673b18dbed61097e717d2de757c78933bcfa9dab4e216ad447b7` | Resampled, gently reduced 3.5 dB above 4.2 kHz, and re-encoded; processed across repeated copies and trimmed to preserve the loop seam |
+| `music_clear.ogg` | [Soliloquy](https://opengameart.org/content/soliloquy) by Matthew Pablo, CC BY 3.0 | `480aa2ae1211e217cf7506704a73d223747942ed1dfaa4e296f2c2ef592830a4` | The first six seconds were crossfaded with the tail to form a gentle loop, then the result was resampled and re-encoded; runtime gain is deliberately low |
 | `music_threat.ogg` | [Foreboding Pixels](https://opengameart.org/content/foreboding-pixels), Sorth | `f54726be447aa69040171eccdcc7b13d46135d4caa635e7e255c990ffecb4770` | Loop version resampled and transcoded from MP3 |
 | `music_failure.ogg` | [Game Over](https://opengameart.org/content/game-over), Kistol | `eb16aeb17fed5b13575702e082b54db00b296f6f4f2e9ee89c63aca895bc085e` | Resampled and re-encoded |
 | `music_victory.ogg` | [Glorious victory fanfare NES](https://opengameart.org/content/glorious-victory-fanfare-nes), congusbongus | `7be73d492c038bce957bbbfbe479c7210fd58b50ae52f3ddf58b5514b0fd894e` | Resampled, converted to stereo, and re-encoded |
@@ -27,8 +27,8 @@ described below. `SHA256SUMS` records the exact derived files in this directory.
 | `effect_thunder.ogg` | [100 CC0 SFX #2](https://opengameart.org/content/100-cc0-sfx-2), rubberduck, `sfx100v2_thunder_01.ogg` | `8a4f1dee999546b363f989eff92174375eeae7c241dc9beaa0892fb131ef12a9` | Unchanged |
 | `effect_basket_1.ogg` | [100 CC0 metal and wood SFX](https://opengameart.org/content/100-cc0-metal-and-wood-sfx), rubberduck, `wood_squeak_01.ogg` | `c6c90e02993b2e044937f344351b417aeff6841aa4cd683f208d85ececf23392` | Re-encoded |
 | `effect_basket_2.ogg` | Same pack, `wood_squeak_02.ogg` | `841793c92034e419afec66538f7cf08f0f36f307aa3a1a5aaf7b664a0a178dee` | Re-encoded |
-| `effect_pterosaur_1.ogg` | [Peacock scream](https://opengameart.org/content/peacock-scream), popthebubbles4, submitted by qubodup | `2a4b19ac14a22f63425f98e9d305610c8ce766b02bfac295fdf827a6d5b70ddd` | Slowed/pitched down, band-limited, converted to stereo, and encoded |
-| `effect_pterosaur_2.ogg` | [Vulture Imitation](https://opengameart.org/content/vulture-imitation), AntumDeluge | `0469da50818bcf7d473d05902b30c298b89ba8959e8b616056b2b42c47bf0f75` | Slowed/pitched down, band-limited, converted to stereo, and re-encoded |
+| `effect_pterosaur_1.ogg` | [Dinosaur call](https://freesound.org/people/Alessandrobraz/sounds/708641/) by Alessandrobraz, CC0 | `9196c7b7a3fe002f9a815ba9c87b682cb6ab187ab0cbb4c9bb93f99844b8f070` | First version isolated, reduced 4 dB, lightly band-limited, faded, resampled, and re-encoded |
+| `effect_pterosaur_2.ogg` | Same source | `9196c7b7a3fe002f9a815ba9c87b682cb6ab187ab0cbb4c9bb93f99844b8f070` | Second version isolated, reduced 7 dB to match its sharper transient to the first call, lightly band-limited, faded, resampled, and re-encoded |
 | `effect_dinosaur_1.ogg` | [80 CC0 creature SFX](https://opengameart.org/content/80-cc0-creature-sfx), rubberduck, `roar_01.ogg` | `e9d44326860a1c3aba917684faccfd967a4fefa284d7df773e05ae890ec242e0` | Slowed/pitched down and low-pass filtered |
 | `effect_dinosaur_2.ogg` | Same pack, `roar_02.ogg` | `ceb532ee0fe775d6f86a821099b75f1790ab8022b963cb837c8c1fa4fffee5c2` | Slowed/pitched down and low-pass filtered |
 | `effect_sauropod.ogg` | Same pack, `monster_01.ogg` | `e8bb5c9d3d25172666c60ed302d354144b67e66170bdf039ec88f4b6b0cd879f` | Substantially slowed/pitched down and low-pass filtered |

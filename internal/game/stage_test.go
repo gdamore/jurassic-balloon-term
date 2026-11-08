@@ -7,6 +7,8 @@ import (
 	"math"
 	"testing"
 	"time"
+
+	"github.com/gdamore/jurassic-balloon-term/internal/sprite"
 )
 
 func TestCampaignStagePlan(t *testing.T) {
@@ -133,11 +135,71 @@ func TestContinueToStagePreservesFlightState(t *testing.T) {
 		t.Fatalf("intermediate completion interrupted flight: velocity=%v burner=%t", m.VerticalVelocity(), m.BurnerOn())
 	}
 	next := m.ContinueToStage(1)
+	if next.terrain[0].coneVariant != 1 {
+		t.Fatalf("continued far-terrain cone variant = %d, want 1", next.terrain[0].coneVariant)
+	}
 	if next.StageIndex() != 1 || next.Grounded() || next.Completed() {
 		t.Fatalf("continued stage state = index:%d grounded:%t completed:%t", next.StageIndex(), next.Grounded(), next.Completed())
 	}
 	if next.BalloonPosition().X != 24 || next.BalloonY() != 7.25 || next.VerticalVelocity() != -2.4 || next.Heat() != 0.72 || !next.BurnerOn() {
 		t.Fatalf("continued flight = position:%v y:%v velocity:%v heat:%v burner:%t", next.BalloonPosition(), next.BalloonY(), next.VerticalVelocity(), next.Heat(), next.BurnerOn())
+	}
+}
+
+func TestStageTransitionCarriesVisibleFlagCloudAndPterosaur(t *testing.T) {
+	previous := NewStageModel(80, 30, 0)
+	makeAirborne(previous)
+	previous.balloon.SetPosition(24, 10)
+	previous.finish.SetPosition(18, 22)
+	cloud := previous.clouds[0].sprite
+	cloud.SetPosition(8, 3)
+	hazard := previous.pterosaur
+	hazard.setBaseY(4)
+	hazard.sprite.SetPosition(52, 4)
+	previous.completeStage()
+
+	next := previous.ContinueToStage(1)
+	for name, carried := range map[string]*sprite.Sprite{
+		"flag":      previous.finish,
+		"cloud":     cloud,
+		"pterosaur": hazard.sprite,
+	} {
+		if !modelHasSprite(next, carried) {
+			t.Fatalf("visible outgoing %s was cleared at the stage boundary", name)
+		}
+	}
+	if len(next.departingPterosaurs) != 1 || next.departingPterosaurs[0] != hazard {
+		t.Fatal("outgoing pterosaur behavior was not preserved")
+	}
+	for _, incoming := range next.clouds {
+		x, _ := incoming.sprite.Position()
+		if x < float64(next.Width) {
+			t.Fatalf("replacement cloud starts at x=%v inside the playfield", x)
+		}
+	}
+
+	oldX, _ := hazard.sprite.Position()
+	oldPhase := hazard.phase
+	next.Update(100 * time.Millisecond)
+	newX, _ := hazard.sprite.Position()
+	if newX >= oldX || hazard.phase == oldPhase {
+		t.Fatalf("outgoing pterosaur did not continue flying: x %v -> %v, phase %v -> %v", oldX, newX, oldPhase, hazard.phase)
+	}
+}
+
+func TestOutgoingPterosaurRemainsHazardous(t *testing.T) {
+	previous := NewStageModel(80, 30, 0)
+	makeAirborne(previous)
+	previous.balloon.SetPosition(24, 10)
+	hazard := previous.pterosaur
+	hazard.setBaseY(10)
+	hazard.sprite.SetPosition(24, 10)
+	previous.completeStage()
+
+	next := previous.ContinueToStage(1)
+	next.Update(time.Millisecond)
+	if !next.Popped() {
+		t.Fatal("outgoing pterosaur became harmless at the stage boundary")
 	}
 }
 
@@ -202,4 +264,13 @@ func TestLeavingThunderheadPassSweepsWeatherOutAndEasesWind(t *testing.T) {
 	if next.rain != nil || next.ceiling != nil || next.scrollSpeed != worldScrollSpeed || next.transition != nil {
 		t.Fatalf("completed exit = rain:%v ceiling:%v speed:%v transition:%v", next.rain, next.ceiling, next.scrollSpeed, next.transition)
 	}
+}
+
+func modelHasSprite(model *Model, target *sprite.Sprite) bool {
+	for _, candidate := range model.Sprites() {
+		if candidate == target {
+			return true
+		}
+	}
+	return false
 }

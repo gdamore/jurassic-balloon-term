@@ -253,6 +253,9 @@ func TestBurnerHeatDecaysAfterRelease(t *testing.T) {
 
 func TestVerticalSpeedIsCapped(t *testing.T) {
 	m := NewModel(80, 1000)
+	m.scene.Remove(m.pterosaur.sprite)
+	m.pterosaur = nil
+	m.stage.PterosaurGroups = nil
 	makeAirborne(m)
 	for range 1000 {
 		m.Update(33 * time.Millisecond)
