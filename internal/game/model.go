@@ -108,31 +108,37 @@ type Model struct {
 	Paused  bool
 	Elapsed time.Duration
 
-	scene      *sprite.Scene
-	balloon    *sprite.Sprite
-	clouds     []cloudTrack
-	storm      *stormHazard
-	pterosaur  *pterosaurHazard
-	redEye     *pterosaurHazard
-	finish     *sprite.Sprite
-	trees      []treeTrack
-	ferns      []fernTrack
-	grazers    []grazerTrack
-	terrain    []*terrainLayer
-	random     *rand.Rand
-	cloudID    int
-	burner     bool
-	heat       float64
-	vy         float64
-	popped     bool
-	stopped    bool
-	popTime    time.Duration
-	events     []Event
-	stage      Stage
-	stageIndex int
-	distance   float64
-	completed  bool
-	grounded   bool
+	scene       *sprite.Scene
+	balloon     *sprite.Sprite
+	clouds      []cloudTrack
+	storm       *stormHazard
+	storms      []*stormHazard
+	rain        *sprite.Sprite
+	ceiling     *ceilingStorm
+	pterosaur   *pterosaurHazard
+	redEye      *pterosaurHazard
+	finish      *sprite.Sprite
+	trees       []treeTrack
+	ferns       []fernTrack
+	grazers     []grazerTrack
+	terrain     []*terrainLayer
+	random      *rand.Rand
+	cloudID     int
+	burner      bool
+	heat        float64
+	vy          float64
+	popped      bool
+	stopped     bool
+	popTime     time.Duration
+	events      []Event
+	stage       Stage
+	stageIndex  int
+	distance    float64
+	completed   bool
+	grounded    bool
+	scrollSpeed float64
+	transition  *stageTransition
+	departing   []*sprite.Sprite
 }
 
 // NewModel creates a model centered in the supplied play field.
@@ -154,6 +160,7 @@ func NewStageModel(width, height, stageIndex int) *Model {
 		stageIndex: stageIndex,
 		grounded:   true,
 	}
+	m.scrollSpeed = m.stage.ScrollSpeed
 	m.scene.Add(m.balloon)
 	m.Resize(width, height)
 	m.addTerrain()
@@ -161,11 +168,16 @@ func NewStageModel(width, height, stageIndex int) *Model {
 	m.addStageFerns()
 	m.addStageGrazers()
 	m.addStageTrees()
-	m.addClouds()
-	m.spawnStorm(float64(m.Width + 10))
-	m.spawnPterosaur(float64(m.Width + 35))
-	if stageIndex >= 1 {
-		m.spawnRedEye(float64(m.Width + 90))
+	if !m.stage.DarkCloudsOnly {
+		m.addClouds()
+	}
+	m.spawnStorm(m.stormStartX(0))
+	m.addStormFronts()
+	if m.stage.Pterosaurs {
+		m.spawnPterosaur(float64(m.Width + 35))
+		if stageIndex >= 1 {
+			m.spawnRedEye(float64(m.Width + 90))
+		}
 	}
 	m.positionFinishFlag()
 	m.scene.Add(m.finish)
@@ -401,8 +413,77 @@ func (m *Model) spawnStorm(x float64) {
 	yFraction := 0.02 + m.random.Float64()*0.18
 	y := m.cloudY(yFraction, 5)
 	m.storm = newStormHazard(x, y, yFraction)
+	m.setStormSpeed(m.storm)
 	m.scene.Add(m.storm.cloud)
 	m.scene.Add(m.storm.bolt)
+	if len(m.storms) == 0 {
+		m.storms = append(m.storms, m.storm)
+	} else {
+		m.storms[0] = m.storm
+	}
+}
+
+func (m *Model) addStormFronts() {
+	for index := 1; index < m.stage.StormFronts; index++ {
+		x := m.stormStartX(index)
+		yFraction := 0.02 + m.random.Float64()*0.18
+		front := newStormHazard(x, m.cloudY(yFraction, 5), yFraction)
+		m.setStormSpeed(front)
+		front.phase = stormPhase(index % len(stormPhaseDurations))
+		front.phaseElapsed = stormPhaseDurations[front.phase] / 2
+		front.applyPhase()
+		m.storms = append(m.storms, front)
+		m.scene.Add(front.cloud)
+		m.scene.Add(front.bolt)
+	}
+}
+
+func (m *Model) setStormSpeed(storm *stormHazard) {
+	speed := stormSpeed * m.stage.ScrollSpeed / worldScrollSpeed
+	storm.cloud.SetVelocity(speed, 0)
+	storm.bolt.SetVelocity(speed, 0)
+}
+
+func (m *Model) stormStartX(index int) float64 {
+	if m.stage.StormFronts <= 1 {
+		return float64(m.Width + 10)
+	}
+	spacing := float64(m.Width) / float64(m.stage.StormFronts)
+	return max(spacing*(float64(index)+0.5)-stormCloudWidth/2, 0)
+}
+
+func (m *Model) resetStorm(storm *stormHazard, x float64) {
+	storm.yFraction = 0.02 + m.random.Float64()*0.18
+	storm.phase = stormGather
+	storm.phaseElapsed = 0
+	storm.applyPhase()
+	storm.setPosition(x, m.cloudY(storm.yFraction, 5))
+}
+
+func (m *Model) resetRainField() {
+	if m.rain != nil {
+		m.scene.Remove(m.rain)
+		m.rain = nil
+	}
+	if !m.stage.PersistentRain {
+		return
+	}
+	m.rain = newRainField(m.Width, m.Height)
+	m.scene.Add(m.rain)
+}
+
+func (m *Model) resetCeilingStorm() {
+	if m.ceiling != nil {
+		m.scene.Remove(m.ceiling.cloud)
+		m.scene.Remove(m.ceiling.bolt)
+		m.ceiling = nil
+	}
+	if !m.stage.DarkCloudsOnly {
+		return
+	}
+	m.ceiling = newCeilingStorm(m.Width, int64(1000+m.stageIndex))
+	m.scene.Add(m.ceiling.cloud)
+	m.scene.Add(m.ceiling.bolt)
 }
 
 func (m *Model) addTerrain() {
@@ -410,8 +491,8 @@ func (m *Model) addTerrain() {
 	groundMax := min(5, max((m.Height-balloonFrame.Height)/2, 1))
 	groundMin := min(2, groundMax)
 	m.terrain = []*terrainLayer{
-		newTerrainLayer("far-terrain", 11, -0.55, farTerrainLayer, 1, 9, StyleFarTerrain, StyleFarTerrain, false),
-		newTerrainLayer("ground", 37, -worldScrollSpeed, groundLayer, groundMin, groundMax, StyleGroundSurface, StyleGroundFill, true),
+		newTerrainLayer("far-terrain", 11, -0.55*m.stage.ScrollSpeed/worldScrollSpeed, farTerrainLayer, 1, 9, StyleFarTerrain, StyleFarTerrain, false),
+		newTerrainLayer("ground", 37, -m.stage.ScrollSpeed, groundLayer, groundMin, groundMax, StyleGroundSurface, StyleGroundFill, true),
 	}
 	for _, terrain := range m.terrain {
 		terrain.initialize(m.scene, m.Width, m.Height)
@@ -421,6 +502,7 @@ func (m *Model) addTerrain() {
 func (m *Model) addStageTrees() {
 	for index, distance := range m.stage.TreeDistances {
 		tree := newTree(index, distance)
+		tree.sprite.SetVelocity(-m.stage.ScrollSpeed, 0)
 		m.positionTree(&tree)
 		m.trees = append(m.trees, tree)
 		m.scene.Add(tree.sprite)
@@ -430,6 +512,7 @@ func (m *Model) addStageTrees() {
 func (m *Model) addStageFerns() {
 	for index, distance := range m.stage.FernDistances {
 		fern := newFern(index, distance)
+		fern.sprite.SetVelocity(-m.stage.ScrollSpeed, 0)
 		m.positionFern(&fern)
 		m.ferns = append(m.ferns, fern)
 		m.scene.Add(fern.sprite)
@@ -439,6 +522,7 @@ func (m *Model) addStageFerns() {
 func (m *Model) addStageGrazers() {
 	for index, distance := range m.stage.GrazerDistances {
 		grazer := newGrazer(index, distance)
+		grazer.sprite.SetVelocity(-m.stage.ScrollSpeed, 0)
 		m.positionGrazer(&grazer)
 		m.grazers = append(m.grazers, grazer)
 		m.scene.Add(grazer.sprite)
@@ -554,9 +638,13 @@ func (m *Model) Resize(width, height int) {
 		x, _ := cloud.sprite.Position()
 		cloud.sprite.SetPosition(x, m.cloudY(cloud.yFraction, frame.Height))
 	}
-	if m.storm != nil {
-		x, _ := m.storm.cloud.Position()
-		m.storm.setPosition(x, m.cloudY(m.storm.yFraction, 5))
+	for _, storm := range m.storms {
+		x, _ := storm.cloud.Position()
+		storm.setPosition(x, m.cloudY(storm.yFraction, 5))
+	}
+	if m.transition == nil {
+		m.resetRainField()
+		m.resetCeilingStorm()
 	}
 	if m.pterosaur != nil {
 		m.pterosaur.setBaseY(m.pterosaurY(m.pterosaur.yFraction))
@@ -621,6 +709,7 @@ func (m *Model) StageIndex() int { return m.stageIndex }
 // vertical velocity, and burner state carry across the finish flag.
 func (m *Model) ContinueToStage(stageIndex int) *Model {
 	next := NewStageModel(m.Width, m.Height, stageIndex)
+	next.inheritWorld(m)
 	x, y := m.balloon.Position()
 	next.grounded = false
 	next.heat = m.heat
@@ -628,6 +717,8 @@ func (m *Model) ContinueToStage(stageIndex int) *Model {
 	next.balloon.SetPosition(x, y)
 	next.balloon.SetVelocity(0, next.vy)
 	next.SetBurner(m.burner)
+	next.beginStageTransition(m)
+	next.anchorGrazers()
 	next.clampBalloon()
 	return next
 }
@@ -689,10 +780,19 @@ func (m *Model) Update(step time.Duration) []sprite.Collision {
 		m.vy = -0.5
 	}
 	m.Elapsed += step
-	m.distance = min(m.distance+worldScrollSpeed*step.Seconds(), m.stage.GoalDistance)
-	if m.storm.updatePhase(step) {
-		x, _ := m.storm.bolt.Position()
-		if frame, visible := m.storm.bolt.ActiveFrame(); visible && x < float64(m.Width) && x+float64(frame.Width) > 0 {
+	m.updateStageTransition(step)
+	m.distance = min(m.distance+m.scrollSpeed*step.Seconds(), m.stage.GoalDistance)
+	for _, storm := range m.storms {
+		if storm.updatePhase(step) {
+			x, _ := storm.bolt.Position()
+			if frame, visible := storm.bolt.ActiveFrame(); visible && x < float64(m.Width) && x+float64(frame.Width) > 0 {
+				m.events = append(m.events, EventLightningStruck)
+			}
+		}
+	}
+	if m.ceiling != nil && m.ceiling.update(step) {
+		x, _ := m.ceiling.bolt.Position()
+		if frame, visible := m.ceiling.bolt.ActiveFrame(); visible && x < float64(m.Width) && x+float64(frame.Width) > 0 {
 			m.events = append(m.events, EventLightningStruck)
 		}
 	}
@@ -708,10 +808,11 @@ func (m *Model) Update(step time.Duration) []sprite.Collision {
 	m.vy = min(max(m.vy+(gravity-maximumLift*m.heat)*dt, -maximumRiseSpeed), maximumFallSpeed)
 	m.balloon.SetVelocity(0, m.vy)
 	collisions := m.scene.Update(step)
+	m.updateDepartingScenery()
 	m.anchorGrazers()
 	for _, collision := range collisions {
 		other, hitsBalloon := collisionWith(m.balloon, collision)
-		if hitsBalloon && (other == m.storm.bolt || m.isPterosaurHazard(other) || m.isGroundHazard(other)) {
+		if hitsBalloon && (m.isLightningHazard(other) || m.isCeilingHazard(other) || m.isPterosaurHazard(other) || m.isGroundHazard(other)) {
 			m.popBalloon()
 			break
 		}
@@ -732,16 +833,20 @@ func (m *Model) Update(step time.Duration) []sprite.Collision {
 			m.clouds[index] = m.newCloud(cloud.depth, float64(m.Width)+gap)
 		}
 	}
-	stormX, _ := m.storm.cloud.Position()
-	if stormX+stormCloudWidth < 0 {
-		gap := 30 + m.random.Intn(40)
-		m.spawnStorm(float64(m.Width + gap))
+	for _, storm := range m.storms {
+		stormX, _ := storm.cloud.Position()
+		if stormX+stormCloudWidth < 0 {
+			gap := 30 + m.random.Intn(40)
+			m.resetStorm(storm, float64(m.Width+gap))
+		}
 	}
-	pterosaurX, _ := m.pterosaur.sprite.Position()
-	pterosaurFrame, _ := m.pterosaur.sprite.ActiveFrame()
-	if pterosaurX+float64(pterosaurFrame.Width) < 0 {
-		gap := 30 + m.random.Intn(60)
-		m.spawnPterosaur(float64(m.Width + gap))
+	if m.pterosaur != nil {
+		pterosaurX, _ := m.pterosaur.sprite.Position()
+		pterosaurFrame, _ := m.pterosaur.sprite.ActiveFrame()
+		if pterosaurX+float64(pterosaurFrame.Width) < 0 {
+			gap := 30 + m.random.Intn(60)
+			m.spawnPterosaur(float64(m.Width + gap))
+		}
 	}
 	if m.redEye != nil {
 		redEyeX, _ := m.redEye.sprite.Position()
@@ -777,7 +882,20 @@ func collisionWith(target *sprite.Sprite, collision sprite.Collision) (*sprite.S
 }
 
 func (m *Model) isPterosaurHazard(candidate *sprite.Sprite) bool {
-	return candidate == m.pterosaur.sprite || m.redEye != nil && candidate == m.redEye.sprite
+	return m.pterosaur != nil && candidate == m.pterosaur.sprite || m.redEye != nil && candidate == m.redEye.sprite
+}
+
+func (m *Model) isLightningHazard(candidate *sprite.Sprite) bool {
+	for _, storm := range m.storms {
+		if storm.bolt == candidate {
+			return true
+		}
+	}
+	return false
+}
+
+func (m *Model) isCeilingHazard(candidate *sprite.Sprite) bool {
+	return m.ceiling != nil && (candidate == m.ceiling.cloud || candidate == m.ceiling.bolt)
 }
 
 func (m *Model) isGroundHazard(candidate *sprite.Sprite) bool {
@@ -809,7 +927,12 @@ func (m *Model) popBalloon() {
 	m.vy = 0
 	m.balloon.SetVelocity(0, 0)
 	m.balloon.SetLayer(popLayer)
-	m.storm.bolt.Hide()
+	for _, storm := range m.storms {
+		storm.bolt.Hide()
+	}
+	if m.ceiling != nil {
+		m.ceiling.bolt.Hide()
+	}
 	_ = m.balloon.SetFrame("pop-1")
 }
 
@@ -823,7 +946,12 @@ func (m *Model) completeStage() {
 		m.vy = 0
 		m.balloon.SetVelocity(0, 0)
 		m.finish.SetVelocity(0, 0)
-		m.storm.bolt.Hide()
+		for _, storm := range m.storms {
+			storm.bolt.Hide()
+		}
+		if m.ceiling != nil {
+			m.ceiling.bolt.Hide()
+		}
 	}
 	m.events = append(m.events, EventStageCompleted)
 }
@@ -834,7 +962,7 @@ func (m *Model) positionFinishFlag() {
 	y := float64(max(m.Height-finishHeight, 0))
 	m.finish.SetPosition(x, y)
 	if !m.completed {
-		m.finish.SetVelocity(-worldScrollSpeed, 0)
+		m.finish.SetVelocity(-m.stage.ScrollSpeed, 0)
 	}
 }
 

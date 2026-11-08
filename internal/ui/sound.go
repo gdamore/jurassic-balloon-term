@@ -14,6 +14,7 @@ type Sound interface {
 	StageCompleted()
 	SetMusicEnabled(bool)
 	SetEffectsEnabled(bool)
+	SetStage(int)
 	Retry()
 	SetPaused(bool)
 }

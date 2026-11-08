@@ -65,7 +65,7 @@ motion while avoiding aerial, terrain, and altitude hazards.
 - Progress is called **distance traveled** even while constant world speed
   makes it directly proportional to elapsed play time.
 - The initial target stages are Fern Valley (2:00 / 384 units), Red-Eye Run
-  (2:30 / 480), Thunderhead Pass (3:00 / 576), Long-Neck Grove (3:30 / 672),
+  (2:30 / 480), Thunderhead Pass (3:00 / 756), Long-Neck Grove (3:30 / 672),
   and Carnivore Country (4:00 / 768).
 - A visible completion flag marks each stage save/unlock boundary. Crossing an
   intermediate flag continues directly into the next stage without pausing or
@@ -93,6 +93,18 @@ motion while avoiding aerial, terrain, and altitude hazards.
   dangerous trees, and three more grazer pairs keep its landscape populated.
   Grazer feet overlap the terrain surface slightly so uneven ground never
   makes them appear to hover.
+- Thunderhead Pass uses persistent screen-wide animated rain, four
+  independently phased thunderheads, sparse fern scenery, and six authored
+  tree hazards. Ordinary clouds and both pterosaur variants are absent. A dark,
+  collidable thundercloud ceiling makes the top rows dangerous and telegraphs
+  deterministic pseudo-random lightning strikes that extend only one or two
+  cells below it. The whole foreground scrolls at 4.2 cells/second rather than
+  the ordinary 3.2 to convey strong wind, while far terrain retains its slower
+  parallax ratio. Entering the stage switches to storm ambience and threat
+  music; leaving it restores the ordinary daytime soundscape. Both boundaries
+  use a roughly two-second moving weather front: existing terrain and visible
+  scenery continue scrolling, rain and the thundercloud ceiling sweep across
+  the screen, and wind speed eases between the ordinary and storm values.
 
 A post-campaign endless run that unlocks after completing all five stages is a
 strong next-mode idea, not yet a committed implementation. It would measure

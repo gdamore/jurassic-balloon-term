@@ -35,6 +35,37 @@ func TestStormTelegraphsBeforeStrike(t *testing.T) {
 	}
 }
 
+func TestThunderheadPassHasFourStaggeredStormFronts(t *testing.T) {
+	m := NewStageModel(80, 24, 2)
+	if len(m.storms) != 4 || m.storms[0] != m.storm {
+		t.Fatalf("storm fronts = %d with primary %t, want four including primary", len(m.storms), len(m.storms) > 0 && m.storms[0] == m.storm)
+	}
+	if m.storms[0].phase == m.storms[1].phase && m.storms[0].phaseElapsed == m.storms[1].phaseElapsed {
+		t.Fatal("Thunderhead Pass storm fronts are synchronized")
+	}
+	for stageIndex := range StageCount() {
+		if stageIndex == 2 {
+			continue
+		}
+		if fronts := len(NewStageModel(80, 24, stageIndex).storms); fronts != 1 {
+			t.Fatalf("stage %d storm fronts = %d, want 1", stageIndex, fronts)
+		}
+	}
+}
+
+func TestThunderheadPassUsesOnlyDarkAerialHazards(t *testing.T) {
+	m := NewStageModel(80, 24, 2)
+	if len(m.clouds) != 0 {
+		t.Fatalf("ordinary cloud count = %d, want 0", len(m.clouds))
+	}
+	if m.pterosaur != nil || m.redEye != nil {
+		t.Fatalf("Thunderhead Pass pterosaurs = ordinary:%t red-eye:%t", m.pterosaur != nil, m.redEye != nil)
+	}
+	if m.ceiling == nil {
+		t.Fatal("Thunderhead Pass has no thunderhead ceiling")
+	}
+}
+
 func TestVisibleLightningStrikeProducesGameEvent(t *testing.T) {
 	m := NewModel(80, 24)
 	makeAirborne(m)

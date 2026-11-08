@@ -29,7 +29,11 @@ func TestFirstTwoStagesHaveAuthoredTreeLines(t *testing.T) {
 			t.Fatalf("Red-Eye Run tree %d distance = %v outside stage", index, distance)
 		}
 	}
-	for index := 2; index < StageCount(); index++ {
+	thunderhead := StageAt(2)
+	if len(thunderhead.TreeDistances) != 6 {
+		t.Fatalf("Thunderhead Pass tree count = %d, want 6", len(thunderhead.TreeDistances))
+	}
+	for index := 3; index < StageCount(); index++ {
 		if trees := StageAt(index).TreeDistances; len(trees) != 0 {
 			t.Fatalf("stage %d unexpectedly schedules trees at %v", index, trees)
 		}

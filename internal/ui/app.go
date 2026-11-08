@@ -192,6 +192,7 @@ func (a *App) resetStage(stageIndex int) {
 	if a.sound != nil {
 		a.sound.SetBurner(false)
 		a.sound.Retry()
+		a.sound.SetStage(stageIndex)
 	}
 }
 
@@ -200,6 +201,9 @@ func (a *App) continueCompletedStage() {
 		return
 	}
 	a.model = a.model.ContinueToStage(a.model.StageIndex() + 1)
+	if a.sound != nil {
+		a.sound.SetStage(a.model.StageIndex())
+	}
 }
 
 func selectedStage(event *tcell.EventKey) (int, bool) {

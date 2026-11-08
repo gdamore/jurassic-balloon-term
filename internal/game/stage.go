@@ -5,7 +5,10 @@ package game
 
 import "time"
 
-const worldScrollSpeed = 3.2
+const (
+	worldScrollSpeed = 3.2
+	stormScrollSpeed = 4.2
+)
 
 // Stage describes an authored stretch of the journey. Checkpoints are
 // distances from the stage start; persistence and restart behavior will be
@@ -18,6 +21,11 @@ type Stage struct {
 	TreeDistances   []float64
 	FernDistances   []float64
 	GrazerDistances []float64
+	StormFronts     int
+	PersistentRain  bool
+	DarkCloudsOnly  bool
+	Pterosaurs      bool
+	ScrollSpeed     float64
 }
 
 var stages = []Stage{
@@ -35,9 +43,39 @@ var stages = []Stage{
 		),
 		0.10, 0.125, 0.43, 0.455, 0.76, 0.785,
 	),
-	newStage("Thunderhead Pass", 3*time.Minute, time.Minute, 2*time.Minute),
+	withStorm(
+		withFerns(
+			withTrees(newStage("Thunderhead Pass", 3*time.Minute, time.Minute, 2*time.Minute), 0.12, 0.28, 0.44, 0.60, 0.76, 0.92),
+			0.05, 0.20, 0.36, 0.53, 0.69, 0.85,
+		),
+		4,
+	),
 	newStage("Long-Neck Grove", 210*time.Second, 70*time.Second, 140*time.Second),
 	newStage("Carnivore Country", 4*time.Minute, time.Minute, 2*time.Minute, 3*time.Minute),
+}
+
+func withStorm(stage Stage, fronts int) Stage {
+	stage = withScrollSpeed(stage, stormScrollSpeed)
+	stage.StormFronts = max(fronts, 1)
+	stage.PersistentRain = true
+	stage.DarkCloudsOnly = true
+	stage.Pterosaurs = false
+	return stage
+}
+
+func withScrollSpeed(stage Stage, speed float64) Stage {
+	ratio := speed / stage.ScrollSpeed
+	stage.ScrollSpeed = speed
+	stage.GoalDistance *= ratio
+	for index := range stage.Checkpoints {
+		stage.Checkpoints[index] *= ratio
+	}
+	for _, distances := range [][]float64{stage.TreeDistances, stage.FernDistances, stage.GrazerDistances} {
+		for index := range distances {
+			distances[index] *= ratio
+		}
+	}
+	return stage
 }
 
 func withGrazers(stage Stage, fractions ...float64) Stage {
@@ -70,6 +108,9 @@ func newStage(name string, duration time.Duration, checkpoints ...time.Duration)
 		TargetDuration: duration,
 		GoalDistance:   worldScrollSpeed * duration.Seconds(),
 		Checkpoints:    make([]float64, len(checkpoints)),
+		StormFronts:    1,
+		Pterosaurs:     true,
+		ScrollSpeed:    worldScrollSpeed,
 	}
 	for index, checkpoint := range checkpoints {
 		stage.Checkpoints[index] = worldScrollSpeed * checkpoint.Seconds()

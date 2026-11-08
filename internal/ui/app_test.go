@@ -143,6 +143,7 @@ type recordingSound struct {
 	completed  int
 	music      []bool
 	effects    []bool
+	stages     []int
 }
 
 func (*recordingSound) Start()              {}
@@ -157,8 +158,9 @@ func (s *recordingSound) SetMusicEnabled(on bool) {
 func (s *recordingSound) SetEffectsEnabled(on bool) {
 	s.effects = append(s.effects, on)
 }
-func (*recordingSound) Retry()         {}
-func (*recordingSound) SetPaused(bool) {}
+func (s *recordingSound) SetStage(stage int) { s.stages = append(s.stages, stage) }
+func (*recordingSound) Retry()               {}
+func (*recordingSound) SetPaused(bool)       {}
 
 func TestSoundTracksBurnerAndGameEvents(t *testing.T) {
 	sound := &recordingSound{}
@@ -210,7 +212,8 @@ func TestStartScreenTogglesAudioAndStartsBurner(t *testing.T) {
 }
 
 func TestNumberKeysSelectStagesImmediately(t *testing.T) {
-	a := New(nil)
+	sound := &recordingSound{}
+	a := New(nil, sound)
 	a.model = game.NewModel(80, 24)
 	a.burnerKeys = make(map[burnerKey]struct{})
 	a.handleEvent(tcell.NewEventKey(tcell.KeyRune, "2", tcell.ModNone))
@@ -221,6 +224,9 @@ func TestNumberKeysSelectStagesImmediately(t *testing.T) {
 	a.handleEvent(tcell.NewEventKey(tcell.KeyRune, "5", tcell.ModNone))
 	if a.model.StageIndex() != 4 {
 		t.Fatalf("stage-five selection index = %d, want 4", a.model.StageIndex())
+	}
+	if len(sound.stages) != 2 || sound.stages[0] != 1 || sound.stages[1] != 4 {
+		t.Fatalf("audio stage selections = %v, want [1 4]", sound.stages)
 	}
 
 	a.handleEvent(tcell.NewEventKey(tcell.KeyRune, "6", tcell.ModNone))

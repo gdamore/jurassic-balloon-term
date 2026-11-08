@@ -18,7 +18,7 @@ func TestCampaignStagePlan(t *testing.T) {
 	}{
 		{"Fern Valley", 2 * time.Minute, 384, []float64{192}},
 		{"Red-Eye Run", 150 * time.Second, 480, []float64{240}},
-		{"Thunderhead Pass", 3 * time.Minute, 576, []float64{192, 384}},
+		{"Thunderhead Pass", 3 * time.Minute, 756, []float64{252, 504}},
 		{"Long-Neck Grove", 210 * time.Second, 672, []float64{224, 448}},
 		{"Carnivore Country", 4 * time.Minute, 768, []float64{192, 384, 576}},
 	}
@@ -38,6 +38,24 @@ func TestCampaignStagePlan(t *testing.T) {
 				t.Errorf("stage %d checkpoint %d = %v, want %v", index, checkpoint, stage.Checkpoints[checkpoint], expected.checkpoints[checkpoint])
 			}
 		}
+	}
+}
+
+func TestThunderheadPassUsesFasterCoherentScroll(t *testing.T) {
+	m := NewStageModel(80, 24, 2)
+	if m.stage.ScrollSpeed != stormScrollSpeed || m.stage.ScrollSpeed <= worldScrollSpeed {
+		t.Fatalf("storm scroll speed = %v, want %v above %v", m.stage.ScrollSpeed, stormScrollSpeed, worldScrollSpeed)
+	}
+	if m.stage.GoalDistance != m.stage.ScrollSpeed*m.stage.TargetDuration.Seconds() {
+		t.Fatalf("storm goal distance = %v, want speed × duration %v", m.stage.GoalDistance, m.stage.ScrollSpeed*m.stage.TargetDuration.Seconds())
+	}
+	if m.terrain[1].speed != -stormScrollSpeed {
+		t.Fatalf("storm ground speed = %v, want %v", m.terrain[1].speed, -stormScrollSpeed)
+	}
+	treeSpeed, _ := m.trees[0].sprite.Velocity()
+	finishSpeed, _ := m.finish.Velocity()
+	if treeSpeed != -stormScrollSpeed || finishSpeed != -stormScrollSpeed {
+		t.Fatalf("storm object speeds = tree:%v finish:%v", treeSpeed, finishSpeed)
 	}
 }
 
@@ -120,5 +138,68 @@ func TestContinueToStagePreservesFlightState(t *testing.T) {
 	}
 	if next.BalloonPosition().X != 24 || next.BalloonY() != 7.25 || next.VerticalVelocity() != -2.4 || next.Heat() != 0.72 || !next.BurnerOn() {
 		t.Fatalf("continued flight = position:%v y:%v velocity:%v heat:%v burner:%t", next.BalloonPosition(), next.BalloonY(), next.VerticalVelocity(), next.Heat(), next.BurnerOn())
+	}
+}
+
+func TestEnteringThunderheadPassSweepsWeatherInAndRampsWind(t *testing.T) {
+	previous := NewStageModel(80, 30, 1)
+	makeAirborne(previous)
+	previous.balloon.SetPosition(24, 10)
+	oldGround := previous.terrain[1]
+
+	next := previous.ContinueToStage(2)
+	if next.terrain[1] != oldGround {
+		t.Fatal("stage transition replaced scrolling terrain")
+	}
+	if next.transition == nil || next.scrollSpeed != worldScrollSpeed {
+		t.Fatalf("initial transition = %+v speed %v", next.transition, next.scrollSpeed)
+	}
+	rainX, _ := next.rain.Position()
+	ceilingX, _ := next.ceiling.cloud.Position()
+	if rainX != 80 || ceilingX != 80 {
+		t.Fatalf("incoming weather starts at rain:%v ceiling:%v, want right edge 80", rainX, ceilingX)
+	}
+	if len(next.departing) == 0 {
+		t.Fatal("visible prior-stage scenery did not carry across boundary")
+	}
+
+	next.updateStageTransition(time.Second)
+	if next.scrollSpeed <= worldScrollSpeed || next.scrollSpeed >= stormScrollSpeed {
+		t.Fatalf("mid-transition speed = %v", next.scrollSpeed)
+	}
+	rainX, _ = next.rain.Position()
+	if rainX <= 0 || rainX >= 80 {
+		t.Fatalf("mid-transition rain x = %v", rainX)
+	}
+
+	next.updateStageTransition(time.Second)
+	if next.transition != nil || next.scrollSpeed != stormScrollSpeed {
+		t.Fatalf("completed transition = %+v speed %v", next.transition, next.scrollSpeed)
+	}
+	rainX, _ = next.rain.Position()
+	if rainX != 0 {
+		t.Fatalf("completed rain x = %v, want 0", rainX)
+	}
+}
+
+func TestLeavingThunderheadPassSweepsWeatherOutAndEasesWind(t *testing.T) {
+	previous := NewStageModel(80, 30, 2)
+	makeAirborne(previous)
+	previous.balloon.SetPosition(24, 10)
+	oldRain, oldCeiling := previous.rain, previous.ceiling
+
+	next := previous.ContinueToStage(3)
+	if next.rain != oldRain || next.ceiling != oldCeiling {
+		t.Fatal("outgoing weather was replaced at stage boundary")
+	}
+	next.updateStageTransition(time.Second)
+	rainX, _ := next.rain.Position()
+	if rainX >= 0 || rainX <= -80 || next.scrollSpeed >= stormScrollSpeed || next.scrollSpeed <= worldScrollSpeed {
+		t.Fatalf("mid-exit state = rain:%v speed:%v", rainX, next.scrollSpeed)
+	}
+
+	next.updateStageTransition(time.Second)
+	if next.rain != nil || next.ceiling != nil || next.scrollSpeed != worldScrollSpeed || next.transition != nil {
+		t.Fatalf("completed exit = rain:%v ceiling:%v speed:%v transition:%v", next.rain, next.ceiling, next.scrollSpeed, next.transition)
 	}
 }

@@ -67,6 +67,16 @@ func (s *gameSound) SetEffectsEnabled(enabled bool) {
 	_ = s.engine.SetBusGain(audio.BusUI, ui)
 }
 
+func (s *gameSound) SetStage(stageIndex int) {
+	if stageIndex == 2 {
+		_ = s.engine.SetEnvironment(audio.EnvironmentStorm)
+		_ = s.engine.SetMusic(audio.MusicThreat)
+		return
+	}
+	_ = s.engine.SetEnvironment(audio.EnvironmentPrehistoricDay)
+	_ = s.engine.SetMusic(audio.MusicClearSkies)
+}
+
 func (s *gameSound) Retry() {
 	_ = s.engine.SetContinuous(audio.ContinuousBurner, false)
 	_ = s.engine.SetEnvironment(audio.EnvironmentPrehistoricDay)
