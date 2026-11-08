@@ -7,19 +7,8 @@ import (
 	"fmt"
 	"io"
 	"sync"
-	"time"
 
 	"github.com/ebitengine/oto/v3"
-)
-
-const (
-	// Oto's defaults favor underrun resistance over responsiveness. In this
-	// engine the sole player reads a cheap, continuously generated PCM stream,
-	// so smaller buffers make gameplay cues feel substantially more immediate.
-	// 42.667 ms is 2048 frames at 48 kHz, a size accepted by Web Audio's
-	// ScriptProcessor fallback as well as the native backends.
-	otoOutputBufferSize = 42_667 * time.Microsecond
-	otoPlayerBufferSize = 4_096
 )
 
 // OtoBackend supplies native output on macOS, Windows, and Linux and Web Audio
