@@ -5,6 +5,7 @@ package sprite
 
 import (
 	"fmt"
+	"math"
 	"time"
 )
 
@@ -30,10 +31,11 @@ type Sprite struct {
 	origin       Point
 	vx, vy       float64
 	layer        int
+	collidable   bool
 }
 
 func New(name string) *Sprite {
-	return &Sprite{name: name, frames: make(map[string]Frame)}
+	return &Sprite{name: name, frames: make(map[string]Frame), collidable: true}
 }
 
 func (s *Sprite) Name() string { return s.name }
@@ -94,7 +96,7 @@ func (s *Sprite) SetPosition(x, y float64) { s.x, s.y = x, y }
 func (s *Sprite) Position() (float64, float64) { return s.x, s.y }
 
 func (s *Sprite) CellPosition() Point {
-	return Point{X: int(s.x), Y: int(s.y)}
+	return Point{X: int(math.Floor(s.x)), Y: int(math.Floor(s.y))}
 }
 
 // SetVelocity sets motion in terminal cells per second.
@@ -105,6 +107,12 @@ func (s *Sprite) Velocity() (float64, float64) { return s.vx, s.vy }
 func (s *Sprite) SetLayer(layer int) { s.layer = layer }
 
 func (s *Sprite) Layer() int { return s.layer }
+
+// SetCollidable controls whether the sprite participates in collision tests.
+// Decorative sprites remain visible and animated when collision is disabled.
+func (s *Sprite) SetCollidable(collidable bool) { s.collidable = collidable }
+
+func (s *Sprite) Collidable() bool { return s.collidable }
 
 // Update advances movement and animation by an explicit simulation step.
 func (s *Sprite) Update(step time.Duration) {
@@ -156,4 +164,7 @@ func (s *Sprite) CellAt(x, y int) Cell {
 	return frame.CellAt(x-position.X+s.origin.X, y-position.Y+s.origin.Y)
 }
 
-func (s *Sprite) CollidesAt(x, y int) bool { return s.CellAt(x, y).Rune != 0 }
+func (s *Sprite) CollidesAt(x, y int) bool {
+	cell := s.CellAt(x, y)
+	return cell.Rune != 0 && !cell.NoCollision
+}

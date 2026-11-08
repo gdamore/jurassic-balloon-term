@@ -8,17 +8,30 @@ import (
 	"os"
 
 	"github.com/gdamore/jurassic-balloon-term/internal/ui"
-	"github.com/gdamore/tcell/v2"
+	"github.com/gdamore/tcell/v3"
 )
 
 func main() {
-	screen, err := tcell.NewScreen()
+	browserReady()
+
+	sound, err := newGameSound()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "audio disabled: %v\n", err)
+	} else {
+		defer sound.Close()
+	}
+
+	screen, err := tcell.NewScreen(tcell.OptAdvancedKeys(true))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "create terminal screen: %v\n", err)
 		os.Exit(1)
 	}
 
-	if err := ui.New(screen).Run(); err != nil {
+	app := ui.New(screen)
+	if sound != nil {
+		app = ui.New(screen, sound)
+	}
+	if err := app.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "run Jurassic Balloon Term: %v\n", err)
 		os.Exit(1)
 	}

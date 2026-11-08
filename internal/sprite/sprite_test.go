@@ -52,6 +52,14 @@ func TestVelocityUsesCellsPerSecond(t *testing.T) {
 	}
 }
 
+func TestCellPositionFloorsNegativeCoordinates(t *testing.T) {
+	s := New("moving")
+	s.SetPosition(-0.25, -0.75)
+	if got := s.CellPosition(); got != (Point{X: -1, Y: -1}) {
+		t.Fatalf("cell position = %v, want (-1, -1)", got)
+	}
+}
+
 func TestCollisionIgnoresTransparentCells(t *testing.T) {
 	a := New("a")
 	b := New("b")
@@ -68,6 +76,35 @@ func TestCollisionIgnoresTransparentCells(t *testing.T) {
 	contact, collided := Collide(a, b)
 	if !collided || contact != (Point{X: 0, Y: 0}) {
 		t.Fatalf("collision = (%v, %v), want ({0 0}, true)", contact, collided)
+	}
+}
+
+func TestCollisionIgnoresNonCollidableSprite(t *testing.T) {
+	a := New("balloon")
+	b := New("cloud")
+	mustFrame(t, a, "on", FrameFromStrings("X"))
+	mustFrame(t, b, "on", FrameFromStrings("X"))
+	_ = a.SetFrame("on")
+	_ = b.SetFrame("on")
+	b.SetCollidable(false)
+
+	if _, collided := Collide(a, b); collided {
+		t.Fatal("non-collidable scenery reported a collision")
+	}
+}
+
+func TestCollisionIgnoresDecorativeFrameCell(t *testing.T) {
+	a := New("balloon")
+	b := New("afterglow")
+	mustFrame(t, a, "on", FrameFromStrings("X"))
+	decorative := FrameFromStrings("X")
+	decorative.Cells[0].NoCollision = true
+	mustFrame(t, b, "on", decorative)
+	_ = a.SetFrame("on")
+	_ = b.SetFrame("on")
+
+	if _, collided := Collide(a, b); collided {
+		t.Fatal("decorative visible cell reported a collision")
 	}
 }
 

@@ -55,6 +55,94 @@ motion while avoiding aerial, terrain, and altitude hazards.
 - Environmental conditions can change speed; storm levels are the clearest
   example and are expected to increase speed and difficulty.
 - The terminal version is unequivocally **real time**, not turn based.
+- During prototype playtesting, number keys `1` through `5` immediately start
+  the corresponding campaign stage from either the title screen or gameplay.
+
+### Initial campaign structure
+
+- The first campaign has five stages totaling about fifteen minutes for a
+  clean run. Deaths will make a first completion longer.
+- Progress is called **distance traveled** even while constant world speed
+  makes it directly proportional to elapsed play time.
+- The initial target stages are Fern Valley (2:00 / 384 units), Red-Eye Run
+  (2:30 / 480), Thunderhead Pass (3:00 / 756), Long-Neck Grove (3:30 / 672),
+  and Carnivore Country (4:00 / 768).
+- A visible completion flag marks each stage save/unlock boundary. Crossing an
+  intermediate flag continues directly into the next stage without pausing or
+  returning the balloon to the ground; altitude, heat, burner state, and
+  vertical velocity carry across. The crossed flag and visible outgoing
+  scenery, clouds, and enemies keep moving left instead of disappearing;
+  carried enemies remain animated and dangerous until they leave the screen.
+  Replacement stage clouds enter from beyond the right edge. Only the final
+  campaign flag stops play.
+  Checkpoints within longer stages are authored section boundaries, initially
+  spaced roughly 60–75 seconds apart. Death should eventually offer restart at
+  the latest unlocked stage, and unlocked stages remain directly selectable.
+- Fuel is not required for this first campaign iteration. Reconsider it only
+  after flight, hazards, stage pacing, and restarts are working together.
+- The current Fern Valley prototype introduces a deterministic grove of tall,
+  dangerous ordinary trees in its second half. This breaks up the otherwise
+  safe bottom-third flight lane without raising the floor across the whole
+  stage.
+- Its first half uses harmless, low fern scenery and three pairs of compact
+  three-horn grazers to establish the prehistoric setting before the dangerous
+  grove. The grazers are static, fatal ground hazards with raised horns, a
+  downward beak, a distinct head, and separate frill, body, belly, and leg
+  shading. The grove mixes broadleaf, palm, and cycad silhouettes while
+  retaining comparable collision reach.
+- Red-Eye Run introduces a green, red-eyed pterosaur alongside the ordinary
+  variant. It uses a larger 18×6 silhouette, cruises at twice the ordinary
+  speed, and has a stronger but deliberately capped lunge rather than simply
+  doubling the ordinary boost. Both pterosaur variants visibly open their
+  mouths for the lunge frame that emits the cry. Fern Valley has one authored
+  pair; Red-Eye Run has one staggered three-member group containing a single
+  red-eye. These flocks are limited encounters, not the default spawn pattern.
+  Ferns, a mixed line of
+  dangerous trees, and three more grazer pairs keep its landscape populated.
+  Grazer feet overlap the terrain surface slightly so uneven ground never
+  makes them appear to hover.
+- Thunderhead Pass uses persistent screen-wide animated rain, four
+  independently phased thunderheads, sparse fern scenery, six authored tree
+  hazards, and one grazer pair around distance 318 to break up a former lull.
+  Ordinary clouds and both pterosaur variants are absent. A dark, four-row
+  collidable thundercloud ceiling uses rounded crown clusters, rolling
+  half-block undersides, and highlight/body/shadow color variation so it reads
+  as weather rather than a slab. Its texture drifts laterally at 1.9
+  cells/second, between the far-terrain and foreground rates, while retaining a
+  continuous cloud mass without sky-colored holes. It makes the top rows dangerous and telegraphs
+  deterministic pseudo-random lightning strikes that extend five cells below
+  it. Two much larger thunderheads occupy the lower half of the
+  playfield. Each briefly draws a harmless bright-white preview of the eventual bolt
+  before lightning reaches the terrain and remains live while crossing the
+  balloon's lane, forcing the player to climb rather than settle at one
+  altitude. Warning and strike masks end one cell inside the live foreground
+  surface rather than continuing behind it. The brilliant yellow strike drops
+  rapidly through pale cyan to electric blue, disappears shortly after
+  entering the balloon's lane, and terminates in a brief ground-impact burst
+  so the terrain contact reads clearly. Ordinary thunderhead and ceiling bolts
+  use the same quick yellow-to-blue decay. Only the bright-yellow portion is
+  damaging; cyan and blue afterglow frames are visual feedback only. The whole foreground scrolls at
+  4.2 cells/second rather than
+  the ordinary 3.2 to convey strong wind, while far terrain retains its slower
+  parallax ratio. Entering the stage switches to storm ambience and threat
+  music; leaving it restores the ordinary daytime soundscape. Both boundaries
+  use a roughly two-second moving weather front: existing terrain and visible
+  scenery continue scrolling, rain and the thundercloud ceiling sweep across
+  the screen, and wind speed eases between the ordinary and storm values.
+
+A post-campaign endless run that unlocks after completing all five stages is a
+strong next-mode idea, not yet a committed implementation. It would measure
+survival time/distance and steadily increase encounter difficulty rather than
+use a completion flag.
+
+Later-stage concepts to explore, not current requirements:
+
+- Give Carnivore Country its own more threatening score rather than reusing
+  the clear-weather orchestral track.
+- Add an over-water stage with marine predators and strongly telegraphed
+  waterspouts as vertical hazards.
+- Add Lava Fields with pterosaurs, visible volcanic ejecta, and visually
+  explicit updrafts; avoid surprise forces and pyroclastic-eruption clutter.
 
 ### Flight and controls
 
@@ -66,9 +154,55 @@ motion while avoiding aerial, terrain, and altitude hazards.
   that the player can also concentrate on hazards.
 - The normal control vocabulary should remain extremely small, ideally burner
   on/off as the primary gameplay input.
+- A start screen precedes the run and offers independent music and sound-effect
+  toggles plus room for a short premise blurb.
+- The title screen shares the playfield's sky gradient and adds slowly scrolling
+  shaded clouds, a distant parallax ridge, and quarter-block foreground terrain
+  so it feels like part of the game world rather than a separate text menu.
+- Starting from the title enters a live stage with the balloon still grounded
+  and the world stopped. A centered playfield card prompts `SPACE / CLICK` to
+  launch; it remains until sustained heat actually lifts the balloon. `C` on
+  the title opens a credits view naming Garrett D'Amore, required Creative Commons audio
+  attributions, additional audio contributors, and core third-party libraries;
+  the repository retains full source links, modification notes, and notices.
+- `M` toggles music, `S` toggles sound effects and ambience, and `-`/`+`
+  adjust master volume in ten-percent steps. These audio controls remain
+  available during play and report changes through a brief centered notice.
+- `Q` and `Esc` return an active run to the title screen, including from
+  paused, popped, or completed states. They quit the application only when
+  pressed on the title screen. Audio preferences survive the return.
+- During flight, distance, heat, and signed vertical velocity use compact
+  two-column vertical gauges at the quiet left edge of the screen rather than
+  persistent text strips over the terrain. Brief stage notices appear in the
+  center. Pause, final completion, and `POPPED!` use persistent centered cards;
+  the popped card waits until the destruction animation finishes and remains
+  until the player retries.
+- Pterosaur lunges use two restrained CC0 designed-dinosaur calls rather than
+  a synthetic squawk or shrill bird scream. Calls are limited to one every 2.2
+  seconds to prevent each flap from becoming an audio interruption; this is
+  characterful game audio, not a claim about reconstructed pterosaur sound.
+- Ordinary daytime ambience uses a continuous CC0 field recording of real
+  birds rather than randomized processed creature calls.
+- Clear-weather stages use a low-mixed, gently looped version of Matthew
+  Pablo's slower orchestral "Soliloquy." Fern Valley retains music, but it
+  should sit behind the subdued jungle ambience and gameplay cues rather than
+  compete for attention.
+- The balloon begins resting on the terrain. Stage time, distance, and hazards
+  remain stopped until sustained burner heat produces actual lift, so the
+  player is not dropped into an immediate fall.
+- The terminal balloon uses a compact three-frame, true-color burner flame.
+  Terminal emoji are avoided because their width and presentation vary by
+  terminal and font.
+- Its fatal pop uses a fast six-frame burst inspired by Proxima 5's compact
+  anime-like explosions: a white flash expands through yellow and orange,
+  breaks into red embers and brown envelope fragments, and leaves the basket
+  and worried pilot falling beneath it before the persistent retry card appears.
 - Modern terminal support for key-release events must be recognized. Kitty
   keyboard protocol and Win32 input mode can provide genuine press/release
   behavior. Capability detection and a legacy fallback are appropriate.
+- Mouse reporting is enabled where supported. Holding the primary mouse button
+  operates the burner exactly like holding Space, including reliable release
+  handling, while other buttons are ignored.
 
 The exact equations, heat/leak state, acceleration cap, velocity cap, and tuning
 constants are **not yet decisions**. They must be found through playtesting.
@@ -92,11 +226,21 @@ physics.
 
 - Dangerous high-altitude conditions keep the player below an upper region.
 - Ground-level danger includes carnivorous dinosaurs and terrain hazards.
+- Carnivore Country should include squat, frilled Dilophosaurus-inspired
+  spitters. At fixed intervals they telegraph and launch damaging projectiles
+  upward, creating a predictable timing hazard for low and middle flight. The
+  venom-spitting behavior is a playful cinematic invention, not a claim about
+  the real animal. Exact cadence, projectile path, and warning animation remain
+  playtesting decisions.
 - Aerial threats include pterosaurs.
 - Environmental forces must be signaled rather than appearing arbitrarily.
 - Rain is the chosen storm signal.
 - Volcanoes may create lift while their ejecta creates a simultaneous damage
   hazard. Both the volcano and its effects should be visually understandable.
+- Distant terrain may include decorative cinder cones with narrow, gently
+  pulsing, branching lava flows. Sparse variations in cone height, crater
+  profile, channel direction, and branching establish volcanic character
+  across stages without adding collision or pyroclastic-eruption gameplay.
 - Predictable motion is important because the balloon reacts with delay.
 
 ### Terminal collision rules
@@ -156,6 +300,9 @@ is a possibility for mobile art, not a terminal requirement.
 #### Terminal
 
 - Go and Tcell.
+- The preferred playfield is 120×40 cells. At startup the game asks Tcell to
+  resize the terminal window to that size; terminals that cannot or will not
+  resize retain their existing dimensions.
 - Proxima 5 is a useful reference for sprites, animation, collision detection,
   layering, and level ideas.
 - Proxima 5 was Garrett’s first substantial game (apart from a number-guessing
@@ -213,7 +360,7 @@ It should be added only after basic flight and avoidance are already fun.
 - Checkpoints and save points.
 - Predictable pterosaur flight patterns.
 - Sauropods raising or lowering their heads.
-- Carnivores threatening low flight, possibly including leaps.
+- Other carnivores threatening low flight, possibly including leaps.
 - Handcrafted sequences with optional procedural variation.
 - Landing and short on-foot phases.
 - Power-ups other than weapons.

@@ -1,7 +1,10 @@
-.PHONY: build test run fmt
+.PHONY: build web test run fmt
 
 build:
 	go build -o bin/jurassic-balloon-term ./cmd/jurassic-balloon-term
+
+web:
+	./scripts/build-web.sh
 
 test:
 	go test ./...

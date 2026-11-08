@@ -85,7 +85,7 @@ func (s *Scene) Update(step time.Duration) []Collision {
 // Collide checks bounding boxes first, then tests only opaque cells in their
 // intersection. It returns the first contact point in row-major order.
 func Collide(a, b *Sprite) (Point, bool) {
-	if a == nil || b == nil || a == b {
+	if a == nil || b == nil || a == b || !a.Collidable() || !b.Collidable() {
 		return Point{}, false
 	}
 	aBounds, aVisible := a.Bounds()
