@@ -55,6 +55,8 @@ motion while avoiding aerial, terrain, and altitude hazards.
 - Environmental conditions can change speed; storm levels are the clearest
   example and are expected to increase speed and difficulty.
 - The terminal version is unequivocally **real time**, not turn based.
+- During prototype playtesting, number keys `1` through `5` immediately start
+  the corresponding campaign stage from either the title screen or gameplay.
 
 ### Initial campaign structure
 
@@ -65,15 +67,32 @@ motion while avoiding aerial, terrain, and altitude hazards.
 - The initial target stages are Fern Valley (2:00 / 384 units), Red-Eye Run
   (2:30 / 480), Thunderhead Pass (3:00 / 576), Long-Neck Grove (3:30 / 672),
   and Carnivore Country (4:00 / 768).
-- A visible completion flag ends each finite stage and provides the persistent
-  save/unlock boundary. Checkpoints within longer stages are authored section
-  boundaries, initially spaced roughly 60–75 seconds apart.
+- A visible completion flag marks each stage save/unlock boundary. Crossing an
+  intermediate flag continues directly into the next stage without pausing or
+  returning the balloon to the ground; altitude, heat, burner state, and
+  vertical velocity carry across. Only the final campaign flag stops play.
+  Checkpoints within longer stages are authored section boundaries, initially
+  spaced roughly 60–75 seconds apart. Death should eventually offer restart at
+  the latest unlocked stage, and unlocked stages remain directly selectable.
 - Fuel is not required for this first campaign iteration. Reconsider it only
   after flight, hazards, stage pacing, and restarts are working together.
 - The current Fern Valley prototype introduces a deterministic grove of tall,
   dangerous ordinary trees in its second half. This breaks up the otherwise
   safe bottom-third flight lane without raising the floor across the whole
   stage.
+- Its first half uses harmless, low fern scenery and three pairs of compact
+  three-horn grazers to establish the prehistoric setting before the dangerous
+  grove. The grazers are static, fatal ground hazards with raised horns, a
+  downward beak, a distinct head, and separate frill, body, belly, and leg
+  shading. The grove mixes broadleaf, palm, and cycad silhouettes while
+  retaining comparable collision reach.
+- Red-Eye Run introduces a green, red-eyed pterosaur alongside the ordinary
+  variant. It shares the established flap-and-glide silhouette, cruises at
+  twice the ordinary speed, and has a stronger but deliberately capped lunge
+  rather than simply doubling the ordinary boost. Ferns, a mixed line of
+  dangerous trees, and three more grazer pairs keep its landscape populated.
+  Grazer feet overlap the terrain surface slightly so uneven ground never
+  makes them appear to hover.
 
 A post-campaign endless run that unlocks after completing all five stages is a
 strong next-mode idea, not yet a committed implementation. It would measure
@@ -90,6 +109,15 @@ use a completion flag.
   that the player can also concentrate on hazards.
 - The normal control vocabulary should remain extremely small, ideally burner
   on/off as the primary gameplay input.
+- A start screen precedes the run and offers independent music and sound-effect
+  toggles plus room for a short premise blurb.
+- Pterosaur lunges use a short, rough, falling crow-like squawk rather than a
+  long shrill bird scream; overlapping calls are limited to avoid fatigue.
+- Ordinary daytime ambience uses a continuous CC0 field recording of real
+  birds rather than randomized processed creature calls.
+- The balloon begins resting on the terrain. Stage time, distance, and hazards
+  remain stopped until sustained burner heat produces actual lift, so the
+  player is not dropped into an immediate fall.
 - Modern terminal support for key-release events must be recognized. Kitty
   keyboard protocol and Win32 input mode can provide genuine press/release
   behavior. Capability detection and a legacy fallback are appropriate.
@@ -116,6 +144,12 @@ physics.
 
 - Dangerous high-altitude conditions keep the player below an upper region.
 - Ground-level danger includes carnivorous dinosaurs and terrain hazards.
+- Carnivore Country should include squat, frilled Dilophosaurus-inspired
+  spitters. At fixed intervals they telegraph and launch damaging projectiles
+  upward, creating a predictable timing hazard for low and middle flight. The
+  venom-spitting behavior is a playful cinematic invention, not a claim about
+  the real animal. Exact cadence, projectile path, and warning animation remain
+  playtesting decisions.
 - Aerial threats include pterosaurs.
 - Environmental forces must be signaled rather than appearing arbitrarily.
 - Rain is the chosen storm signal.
@@ -237,7 +271,7 @@ It should be added only after basic flight and avoidance are already fun.
 - Checkpoints and save points.
 - Predictable pterosaur flight patterns.
 - Sauropods raising or lowering their heads.
-- Carnivores threatening low flight, possibly including leaps.
+- Other carnivores threatening low flight, possibly including leaps.
 - Handcrafted sequences with optional procedural variation.
 - Landing and short on-foot phases.
 - Power-ups other than weapons.

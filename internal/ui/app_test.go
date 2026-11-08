@@ -81,6 +81,7 @@ func TestRetryAndQuitKeys(t *testing.T) {
 func TestAdvancedBurnerInputTracksPressAndRelease(t *testing.T) {
 	a := &App{
 		model:      game.NewModel(80, 24),
+		started:    true,
 		keyRelease: true,
 		burnerKeys: make(map[burnerKey]struct{}),
 	}
@@ -100,6 +101,7 @@ func TestAdvancedBurnerInputTracksPressAndRelease(t *testing.T) {
 func TestAdvancedBurnerInputTracksMultipleKeys(t *testing.T) {
 	a := &App{
 		model:      game.NewModel(80, 24),
+		started:    true,
 		keyRelease: true,
 		burnerKeys: make(map[burnerKey]struct{}),
 	}
@@ -121,7 +123,7 @@ func TestAdvancedBurnerInputTracksMultipleKeys(t *testing.T) {
 }
 
 func TestLegacyBurnerInputStartsPulse(t *testing.T) {
-	a := &App{model: game.NewModel(80, 24)}
+	a := &App{model: game.NewModel(80, 24), started: true}
 	press := tcell.NewEventKey(tcell.KeyRune, "w", tcell.ModNone)
 
 	a.handleEvent(press)
@@ -139,6 +141,8 @@ type recordingSound struct {
 	pterosaurs int
 	lightning  int
 	completed  int
+	music      []bool
+	effects    []bool
 }
 
 func (*recordingSound) Start()              {}
@@ -147,12 +151,18 @@ func (s *recordingSound) BalloonPopped()    { s.pops++ }
 func (s *recordingSound) PterosaurLunged()  { s.pterosaurs++ }
 func (s *recordingSound) LightningStruck()  { s.lightning++ }
 func (s *recordingSound) StageCompleted()   { s.completed++ }
-func (*recordingSound) Retry()              {}
-func (*recordingSound) SetPaused(bool)      {}
+func (s *recordingSound) SetMusicEnabled(on bool) {
+	s.music = append(s.music, on)
+}
+func (s *recordingSound) SetEffectsEnabled(on bool) {
+	s.effects = append(s.effects, on)
+}
+func (*recordingSound) Retry()         {}
+func (*recordingSound) SetPaused(bool) {}
 
 func TestSoundTracksBurnerAndGameEvents(t *testing.T) {
 	sound := &recordingSound{}
-	a := &App{model: game.NewModel(80, 24), sound: sound}
+	a := &App{model: game.NewStageModel(80, 24, game.StageCount()-1), sound: sound}
 
 	a.setBurner(true)
 	a.setBurner(true)
@@ -167,5 +177,61 @@ func TestSoundTracksBurnerAndGameEvents(t *testing.T) {
 	}
 	if sound.pterosaurs != 1 || sound.lightning != 1 || sound.pops != 1 || sound.completed != 1 {
 		t.Fatalf("cue counts = pterosaur:%d lightning:%d pop:%d complete:%d, want 1 each", sound.pterosaurs, sound.lightning, sound.pops, sound.completed)
+	}
+}
+
+func TestIntermediateStageCompletionDoesNotPlayFinalVictory(t *testing.T) {
+	sound := &recordingSound{}
+	a := &App{model: game.NewModel(80, 24), sound: sound}
+	a.handleGameEvent(game.EventStageCompleted)
+	if sound.completed != 0 {
+		t.Fatalf("intermediate stage played %d final victory cues", sound.completed)
+	}
+}
+
+func TestStartScreenTogglesAudioAndStartsBurner(t *testing.T) {
+	sound := &recordingSound{}
+	a := New(nil, sound)
+	a.model = game.NewModel(80, 24)
+	a.keyRelease = true
+	a.burnerKeys = make(map[burnerKey]struct{})
+
+	a.handleEvent(tcell.NewEventKey(tcell.KeyRune, "m", tcell.ModNone))
+	a.handleEvent(tcell.NewEventKey(tcell.KeyRune, "s", tcell.ModNone))
+	if len(sound.music) != 1 || sound.music[0] || len(sound.effects) != 1 || sound.effects[0] {
+		t.Fatalf("audio toggles = music:%v effects:%v, want [false] each", sound.music, sound.effects)
+	}
+
+	space := tcell.NewEventKeyEx(tcell.KeyRune, " ", tcell.ModNone, true, tcell.KeySpace, 1)
+	a.handleEvent(space)
+	if !a.started || !a.model.BurnerOn() {
+		t.Fatalf("space start = started:%t burner:%t", a.started, a.model.BurnerOn())
+	}
+}
+
+func TestNumberKeysSelectStagesImmediately(t *testing.T) {
+	a := New(nil)
+	a.model = game.NewModel(80, 24)
+	a.burnerKeys = make(map[burnerKey]struct{})
+	a.handleEvent(tcell.NewEventKey(tcell.KeyRune, "2", tcell.ModNone))
+	if !a.started || a.model.StageIndex() != 1 {
+		t.Fatalf("stage-two selection = started:%t index:%d", a.started, a.model.StageIndex())
+	}
+
+	a.handleEvent(tcell.NewEventKey(tcell.KeyRune, "5", tcell.ModNone))
+	if a.model.StageIndex() != 4 {
+		t.Fatalf("stage-five selection index = %d, want 4", a.model.StageIndex())
+	}
+
+	a.handleEvent(tcell.NewEventKey(tcell.KeyRune, "6", tcell.ModNone))
+	if a.model.StageIndex() != 4 {
+		t.Fatalf("out-of-range stage key changed index to %d", a.model.StageIndex())
+	}
+}
+
+func TestStageSelectionRequiresKeyPress(t *testing.T) {
+	release := tcell.NewEventKeyEx(tcell.KeyRune, "2", tcell.ModNone, false, tcell.KeyRune, 1)
+	if index, selected := selectedStage(release); selected {
+		t.Fatalf("stage selected on key release: %d", index)
 	}
 }

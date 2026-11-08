@@ -65,6 +65,63 @@ func TestPterosaurPathIsBounded(t *testing.T) {
 	}
 }
 
+func TestRedEyePterosaurHasDistinctPaletteAndSpeed(t *testing.T) {
+	pterosaur := newProfiledPterosaurHazard(redEyePterosaurProfile, 20, 8, 0.5)
+	frame, _ := pterosaur.sprite.ActiveFrame()
+
+	if eye := frame.CellAt(2, 1); eye.Rune != '●' || eye.Style != StyleRedEyePterosaurEye {
+		t.Fatalf("eye cell = %+v, want red-eye styling", eye)
+	}
+	if body := frame.CellAt(3, 1); body.Style != StyleRedEyePterosaur {
+		t.Fatalf("body style = %d, want %d", body.Style, StyleRedEyePterosaur)
+	}
+	if crest := frame.CellAt(4, 0); crest.Style != StyleRedEyePterosaurCrest {
+		t.Fatalf("crest style = %d, want %d", crest.Style, StyleRedEyePterosaurCrest)
+	}
+	if wing := frame.CellAt(9, 1); wing.Style != StyleRedEyePterosaurWing {
+		t.Fatalf("wing style = %d, want %d", wing.Style, StyleRedEyePterosaurWing)
+	}
+	velocity, _ := pterosaur.sprite.Velocity()
+	if velocity != 2*pterosaurSpeed {
+		t.Fatalf("cruise velocity = %v, want 2x ordinary speed %v", velocity, 2*pterosaurSpeed)
+	}
+	if velocity != redEyePterosaurSpeed {
+		t.Fatalf("cruise velocity = %v, want profile speed %v", velocity, redEyePterosaurSpeed)
+	}
+	if pterosaur.profile.boostSpeed != redEyeBoostSpeed {
+		t.Fatalf("boost velocity = %v, want capped boost %v", pterosaur.profile.boostSpeed, redEyeBoostSpeed)
+	}
+}
+
+func TestRedEyePterosaurStartsInSecondStage(t *testing.T) {
+	first := NewStageModel(80, 30, 0)
+	if first.redEye != nil {
+		t.Fatal("red-eye pterosaur appears in Fern Valley")
+	}
+
+	second := NewStageModel(80, 30, 1)
+	if second.redEye == nil {
+		t.Fatal("Red-Eye Run has no red-eye pterosaur")
+	}
+	if second.pterosaur == nil {
+		t.Fatal("Red-Eye Run lost the ordinary pterosaur")
+	}
+}
+
+func TestRedEyePterosaurCollisionPopsBalloon(t *testing.T) {
+	m := NewStageModel(80, 30, 1)
+	makeAirborne(m)
+	balloonX, balloonY := m.balloon.Position()
+	m.redEye.baseY = balloonY
+	m.redEye.phase = 0
+	m.redEye.sprite.SetPosition(balloonX+0.5, balloonY)
+
+	m.Update(time.Millisecond)
+	if !m.Popped() {
+		t.Fatal("red-eye pterosaur contact did not pop balloon")
+	}
+}
+
 func TestPterosaurFlapProducesDecayingSpeedBoost(t *testing.T) {
 	pterosaur := newPterosaurHazard(20, 8, 0.5)
 
@@ -110,6 +167,7 @@ func TestPterosaurFlapProducesDecayingSpeedBoost(t *testing.T) {
 
 func TestPterosaurCollisionPopsBalloon(t *testing.T) {
 	m := NewModel(80, 30)
+	makeAirborne(m)
 	balloonX, balloonY := m.balloon.Position()
 	m.pterosaur.baseY = balloonY
 	m.pterosaur.phase = 0
@@ -126,6 +184,7 @@ func TestPterosaurCollisionPopsBalloon(t *testing.T) {
 
 func TestPterosaurLungeProducesGameEvent(t *testing.T) {
 	m := NewModel(80, 30)
+	makeAirborne(m)
 	m.pterosaur.lastFrame = "down"
 	m.pterosaur.sprite.SetPosition(40, 6)
 	if err := m.pterosaur.sprite.SetFrame("glide"); err != nil {
@@ -147,6 +206,7 @@ func TestPterosaurLungeProducesGameEvent(t *testing.T) {
 
 func TestDepartedPterosaurIsReplaced(t *testing.T) {
 	m := NewModel(80, 24)
+	makeAirborne(m)
 	departed := m.pterosaur.sprite
 	frame, _ := departed.ActiveFrame()
 	departed.SetPosition(float64(-frame.Width-1), 4)
@@ -163,5 +223,26 @@ func TestDepartedPterosaurIsReplaced(t *testing.T) {
 		if item == departed {
 			t.Fatal("departed pterosaur remains in scene")
 		}
+	}
+}
+
+func TestDepartedRedEyePterosaurIsReplacedIndependently(t *testing.T) {
+	m := NewStageModel(80, 24, 1)
+	makeAirborne(m)
+	ordinary := m.pterosaur.sprite
+	departed := m.redEye.sprite
+	frame, _ := departed.ActiveFrame()
+	departed.SetPosition(float64(-frame.Width-1), 4)
+
+	m.Update(time.Millisecond)
+	if m.redEye.sprite == departed {
+		t.Fatal("departed red-eye pterosaur was not replaced")
+	}
+	if m.pterosaur.sprite != ordinary {
+		t.Fatal("replacing red-eye pterosaur also replaced ordinary pterosaur")
+	}
+	x, _ := m.redEye.sprite.Position()
+	if x <= float64(m.Width) {
+		t.Fatalf("replacement red-eye pterosaur x = %v, want beyond right edge %d", x, m.Width)
 	}
 }

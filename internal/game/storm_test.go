@@ -37,6 +37,7 @@ func TestStormTelegraphsBeforeStrike(t *testing.T) {
 
 func TestVisibleLightningStrikeProducesGameEvent(t *testing.T) {
 	m := NewModel(80, 24)
+	makeAirborne(m)
 	m.storm.setPosition(50, 0)
 
 	m.storm.phaseElapsed = stormPhaseDurations[stormGather] - time.Millisecond
@@ -53,6 +54,7 @@ func TestVisibleLightningStrikeProducesGameEvent(t *testing.T) {
 
 func TestOffscreenLightningStrikeIsSilent(t *testing.T) {
 	m := NewModel(80, 24)
+	makeAirborne(m)
 	m.storm.setPosition(float64(m.Width+20), 0)
 
 	m.storm.phase = stormRain
@@ -84,6 +86,7 @@ func TestLightningHasCompactFootprint(t *testing.T) {
 
 func TestStormCloudBodyIsSafe(t *testing.T) {
 	m := NewModel(80, 24)
+	makeAirborne(m)
 	balloonX, balloonY := m.balloon.Position()
 	m.storm.setPosition(balloonX, balloonY)
 
@@ -109,6 +112,7 @@ func TestStormCloudHasShadedCrownAndUnderside(t *testing.T) {
 
 func TestVisibleLightningPopsBalloon(t *testing.T) {
 	m := NewModel(80, 30)
+	makeAirborne(m)
 	balloonX, balloonY := m.balloon.Position()
 	m.storm.phase = stormStrike
 	m.storm.phaseElapsed = 0

@@ -8,8 +8,18 @@ import (
 	"time"
 )
 
+func makeAirborne(m *Model) {
+	m.grounded = false
+	x, _ := m.balloon.Position()
+	frame, _ := m.balloon.ActiveFrame()
+	m.balloon.SetPosition(x, float64(max((m.Height-frame.Height)/2, 0)))
+	m.balloon.SetVelocity(0, 0)
+	m.vy = 0
+}
+
 func TestUpdateHonorsPause(t *testing.T) {
 	m := NewModel(20, 10)
+	makeAirborne(m)
 	m.Update(10 * time.Millisecond)
 	m.TogglePause()
 	m.Update(10 * time.Millisecond)
@@ -26,6 +36,36 @@ func TestResizeClampsPosition(t *testing.T) {
 
 	if position := m.BalloonPosition(); position.X != 1 || position.Y != 0 {
 		t.Fatalf("position after resize = %v, want (1, 0)", position)
+	}
+}
+
+func TestBalloonWaitsOnGroundUntilBurnerProducesLift(t *testing.T) {
+	m := NewModel(80, 30)
+	if !m.Grounded() {
+		t.Fatal("new balloon is not grounded")
+	}
+	frame, _ := m.balloon.ActiveFrame()
+	position := m.BalloonPosition()
+	surfaceY, found := m.terrain[len(m.terrain)-1].surfaceYAt(position.X + frame.Width/2)
+	if !found || position.Y+frame.Height != surfaceY {
+		t.Fatalf("balloon bottom = %d, ground surface = %d, found = %t", position.Y+frame.Height, surfaceY, found)
+	}
+
+	startY := m.BalloonY()
+	m.Update(time.Second)
+	if m.BalloonY() != startY || m.Distance() != 0 || m.Elapsed != 0 || m.Popped() {
+		t.Fatalf("idle launch state moved: y=%v distance=%v elapsed=%v popped=%t", m.BalloonY(), m.Distance(), m.Elapsed, m.Popped())
+	}
+
+	m.SetBurner(true)
+	for range 30 {
+		m.Update(33 * time.Millisecond)
+		if !m.Grounded() {
+			break
+		}
+	}
+	if m.Grounded() || m.VerticalVelocity() >= 0 {
+		t.Fatalf("burner did not launch balloon: grounded=%t vy=%v heat=%v", m.Grounded(), m.VerticalVelocity(), m.Heat())
 	}
 }
 
@@ -102,6 +142,7 @@ func TestCloudsUseDepthAppropriateShading(t *testing.T) {
 
 func TestCloudDepthAndMotion(t *testing.T) {
 	m := NewModel(100, 30)
+	makeAirborne(m)
 	if len(m.clouds) != 5 {
 		t.Fatalf("cloud count = %d, want 5", len(m.clouds))
 	}
@@ -139,6 +180,7 @@ func TestFarCloudOutlinesCloseAtBothEdges(t *testing.T) {
 
 func TestCloudLeavingScreenIsReplaced(t *testing.T) {
 	m := NewModel(80, 24)
+	makeAirborne(m)
 	old := m.clouds[0]
 	frame, _ := old.sprite.ActiveFrame()
 	old.sprite.SetPosition(float64(-frame.Width-1), 4)
@@ -164,6 +206,7 @@ func TestCloudLeavingScreenIsReplaced(t *testing.T) {
 
 func TestGravityAndBurnerControlVerticalMotion(t *testing.T) {
 	m := NewModel(80, 40)
+	makeAirborne(m)
 	start := m.BalloonY()
 	for range 10 {
 		m.Update(33 * time.Millisecond)
@@ -202,6 +245,7 @@ func TestBurnerHeatDecaysAfterRelease(t *testing.T) {
 
 func TestVerticalSpeedIsCapped(t *testing.T) {
 	m := NewModel(80, 1000)
+	makeAirborne(m)
 	for range 1000 {
 		m.Update(33 * time.Millisecond)
 	}

@@ -11,13 +11,16 @@ import (
 )
 
 const updateStep = 33 * time.Millisecond
-const burnerPulse = 200 * time.Millisecond
+const burnerPulse = 300 * time.Millisecond
 
 // App coordinates terminal events, fixed simulation updates, and rendering.
 type App struct {
 	screen      tcell.Screen
 	model       *game.Model
 	sound       Sound
+	started     bool
+	music       bool
+	effects     bool
 	keyRelease  bool
 	burnerKeys  map[burnerKey]struct{}
 	burnerUntil time.Time
@@ -30,7 +33,7 @@ type burnerKey struct {
 }
 
 func New(screen tcell.Screen, sounds ...Sound) *App {
-	app := &App{screen: screen}
+	app := &App{screen: screen, music: true, effects: true}
 	if len(sounds) != 0 {
 		app.sound = sounds[0]
 	}
@@ -72,11 +75,15 @@ func (a *App) Run() error {
 			}
 			a.draw()
 		case <-ticker.C:
+			if !a.started {
+				continue
+			}
 			if !a.keyRelease && a.model.BurnerOn() && time.Now().After(a.burnerUntil) {
 				a.setBurner(false)
 			}
 			a.model.Update(updateStep)
 			a.handleGameEvents()
+			a.continueCompletedStage()
 			a.draw()
 		}
 	}
@@ -95,6 +102,15 @@ func (a *App) handleEvent(event tcell.Event) bool {
 	case *tcell.EventKey:
 		if event.Pressed() && isQuitEvent(event) {
 			return true
+		}
+		if stageIndex, selected := selectedStage(event); selected {
+			a.resetStage(stageIndex)
+			a.started = true
+			return false
+		}
+		if !a.started {
+			a.handleStartEvent(event)
+			return false
 		}
 		if a.model.Completed() {
 			if event.Pressed() && isRetryEvent(event) {
@@ -137,14 +153,65 @@ func (a *App) handleEvent(event tcell.Event) bool {
 	return false
 }
 
+func (a *App) handleStartEvent(event *tcell.EventKey) {
+	if !event.Pressed() {
+		return
+	}
+	if event.Key() == tcell.KeyRune {
+		switch event.Str() {
+		case "m", "M":
+			a.music = !a.music
+			if a.sound != nil {
+				a.sound.SetMusicEnabled(a.music)
+			}
+			return
+		case "s", "S":
+			a.effects = !a.effects
+			if a.sound != nil {
+				a.sound.SetEffectsEnabled(a.effects)
+			}
+			return
+		}
+	}
+	if event.Key() == tcell.KeyEnter || isBurnerEvent(event) {
+		a.started = true
+		if isBurnerEvent(event) {
+			a.handleBurnerEvent(event)
+		}
+	}
+}
+
 func (a *App) resetStage(stageIndex int) {
-	width, height := a.screen.Size()
+	width, height := a.model.Width, a.model.Height
+	if a.screen != nil {
+		width, height = a.screen.Size()
+	}
 	a.model = game.NewStageModel(width, height, stageIndex)
 	a.burnerKeys = make(map[burnerKey]struct{})
 	a.burnerUntil = time.Time{}
 	if a.sound != nil {
+		a.sound.SetBurner(false)
 		a.sound.Retry()
 	}
+}
+
+func (a *App) continueCompletedStage() {
+	if !a.model.Completed() || a.model.StageIndex()+1 >= game.StageCount() {
+		return
+	}
+	a.model = a.model.ContinueToStage(a.model.StageIndex() + 1)
+}
+
+func selectedStage(event *tcell.EventKey) (int, bool) {
+	if !event.Pressed() || event.Key() != tcell.KeyRune {
+		return 0, false
+	}
+	runes := []rune(event.Str())
+	if len(runes) != 1 || runes[0] < '1' || runes[0] > '9' {
+		return 0, false
+	}
+	index := int(runes[0] - '1')
+	return index, index < game.StageCount()
 }
 
 func isQuitEvent(event *tcell.EventKey) bool {
@@ -224,7 +291,9 @@ func (a *App) handleGameEvent(event game.Event) {
 	case game.EventLightningStruck:
 		a.sound.LightningStruck()
 	case game.EventStageCompleted:
-		a.sound.SetBurner(false)
-		a.sound.StageCompleted()
+		if a.model.StageIndex()+1 >= game.StageCount() {
+			a.sound.SetBurner(false)
+			a.sound.StageCompleted()
+		}
 	}
 }

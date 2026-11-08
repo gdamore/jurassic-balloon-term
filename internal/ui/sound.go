@@ -12,6 +12,8 @@ type Sound interface {
 	PterosaurLunged()
 	LightningStruck()
 	StageCompleted()
+	SetMusicEnabled(bool)
+	SetEffectsEnabled(bool)
 	Retry()
 	SetPaused(bool)
 }

@@ -107,6 +107,7 @@ func TestTerrainContinuesVarying(t *testing.T) {
 
 func TestForegroundTerrainPopsBalloon(t *testing.T) {
 	m := NewModel(80, 30)
+	makeAirborne(m)
 	ground := m.terrain[1].chunks[0]
 	frame, _ := ground.ActiveFrame()
 	terrainX, terrainY := firstOpaqueCell(frame)

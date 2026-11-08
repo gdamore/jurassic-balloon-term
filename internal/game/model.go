@@ -53,11 +53,28 @@ const (
 	StylePterosaurWingHighlight
 	StylePterosaurShadow
 	StylePterosaurBeak
+	StyleRedEyePterosaur
+	StyleRedEyePterosaurCrest
+	StyleRedEyePterosaurEye
+	StyleRedEyePterosaurWing
+	StyleRedEyePterosaurWingHighlight
+	StyleRedEyePterosaurShadow
+	StyleRedEyePterosaurBeak
 	StyleFinishFlag
 	StyleFinishPole
 	StyleTreeCanopy
 	StyleTreeHighlight
 	StyleTreeTrunk
+	StyleFernLeaf
+	StyleFernHighlight
+	StyleFernStem
+	StyleGrazerBody
+	StyleGrazerHighlight
+	StyleGrazerShadow
+	StyleGrazerHorn
+	StyleGrazerHead
+	StyleGrazerBeak
+	StyleGrazerLeg
 )
 
 const (
@@ -96,8 +113,11 @@ type Model struct {
 	clouds     []cloudTrack
 	storm      *stormHazard
 	pterosaur  *pterosaurHazard
+	redEye     *pterosaurHazard
 	finish     *sprite.Sprite
 	trees      []treeTrack
+	ferns      []fernTrack
+	grazers    []grazerTrack
 	terrain    []*terrainLayer
 	random     *rand.Rand
 	cloudID    int
@@ -112,6 +132,7 @@ type Model struct {
 	stageIndex int
 	distance   float64
 	completed  bool
+	grounded   bool
 }
 
 // NewModel creates a model centered in the supplied play field.
@@ -131,14 +152,21 @@ func NewStageModel(width, height, stageIndex int) *Model {
 		random:     rand.New(rand.NewSource(int64(stageIndex + 1))),
 		stage:      StageAt(stageIndex),
 		stageIndex: stageIndex,
+		grounded:   true,
 	}
 	m.scene.Add(m.balloon)
 	m.Resize(width, height)
 	m.addTerrain()
+	m.placeBalloonOnGround()
+	m.addStageFerns()
+	m.addStageGrazers()
 	m.addStageTrees()
 	m.addClouds()
 	m.spawnStorm(float64(m.Width + 10))
 	m.spawnPterosaur(float64(m.Width + 35))
+	if stageIndex >= 1 {
+		m.spawnRedEye(float64(m.Width + 90))
+	}
 	m.positionFinishFlag()
 	m.scene.Add(m.finish)
 	return m
@@ -399,6 +427,62 @@ func (m *Model) addStageTrees() {
 	}
 }
 
+func (m *Model) addStageFerns() {
+	for index, distance := range m.stage.FernDistances {
+		fern := newFern(index, distance)
+		m.positionFern(&fern)
+		m.ferns = append(m.ferns, fern)
+		m.scene.Add(fern.sprite)
+	}
+}
+
+func (m *Model) addStageGrazers() {
+	for index, distance := range m.stage.GrazerDistances {
+		grazer := newGrazer(index, distance)
+		m.positionGrazer(&grazer)
+		m.grazers = append(m.grazers, grazer)
+		m.scene.Add(grazer.sprite)
+	}
+	m.anchorGrazers()
+}
+
+func (m *Model) positionGrazer(grazer *grazerTrack) {
+	balloonX, _ := m.balloon.Position()
+	x := balloonX + grazer.distance - m.distance
+	grazer.sprite.SetPosition(x, float64(max(m.Height-grazerHeight-1, 0)))
+}
+
+func (m *Model) anchorGrazers() {
+	if len(m.terrain) == 0 {
+		return
+	}
+	ground := m.terrain[len(m.terrain)-1]
+	for index := range m.grazers {
+		frame, visible := m.grazers[index].sprite.ActiveFrame()
+		if !visible {
+			continue
+		}
+		x, _ := m.grazers[index].sprite.Position()
+		surfaceY, found := 0, false
+		for _, footX := range grazerFootColumns {
+			candidate, candidateFound := ground.surfaceYAt(int(math.Floor(x)) + footX)
+			if candidateFound && (!found || candidate > surfaceY) {
+				surfaceY, found = candidate, true
+			}
+		}
+		if found {
+			m.grazers[index].sprite.SetPosition(x, float64(max(surfaceY-frame.Height+1, 0)))
+		}
+	}
+}
+
+func (m *Model) positionFern(fern *fernTrack) {
+	balloonX, _ := m.balloon.Position()
+	x := balloonX + fern.distance - m.distance
+	y := float64(max(m.Height-fernHeight-1, 0))
+	fern.sprite.SetPosition(x, y)
+}
+
 func (m *Model) positionTree(tree *treeTrack) {
 	balloonX, _ := m.balloon.Position()
 	x := balloonX + tree.distance - m.distance
@@ -415,6 +499,15 @@ func (m *Model) spawnPterosaur(x float64) {
 	m.scene.Add(m.pterosaur.sprite)
 }
 
+func (m *Model) spawnRedEye(x float64) {
+	if m.redEye != nil {
+		m.scene.Remove(m.redEye.sprite)
+	}
+	yFraction := 0.1 + m.random.Float64()*0.8
+	m.redEye = newProfiledPterosaurHazard(redEyePterosaurProfile, x, m.pterosaurY(yFraction), yFraction)
+	m.scene.Add(m.redEye.sprite)
+}
+
 func (m *Model) pterosaurY(fraction float64) float64 {
 	groundHeight := 0
 	if len(m.terrain) != 0 {
@@ -423,6 +516,24 @@ func (m *Model) pterosaurY(fraction float64) float64 {
 	minY := 2
 	maxY := max(minY, m.Height-groundHeight-pterosaurHeight-1)
 	return float64(minY) + float64(maxY-minY)*fraction
+}
+
+func (m *Model) placeBalloonOnGround() {
+	if len(m.terrain) == 0 {
+		return
+	}
+	frame, visible := m.balloon.ActiveFrame()
+	if !visible {
+		return
+	}
+	x, _ := m.balloon.Position()
+	surfaceY, found := m.terrain[len(m.terrain)-1].surfaceYAt(int(math.Floor(x)) + frame.Width/2)
+	if !found {
+		return
+	}
+	m.balloon.SetPosition(x, float64(max(surfaceY-frame.Height, 0)))
+	m.balloon.SetVelocity(0, 0)
+	m.vy = 0
 }
 
 // Resize changes the play field and keeps the balloon on screen.
@@ -450,6 +561,9 @@ func (m *Model) Resize(width, height int) {
 	if m.pterosaur != nil {
 		m.pterosaur.setBaseY(m.pterosaurY(m.pterosaur.yFraction))
 	}
+	if m.redEye != nil {
+		m.redEye.setBaseY(m.pterosaurY(m.redEye.yFraction))
+	}
 	if m.finish != nil {
 		m.positionFinishFlag()
 	}
@@ -458,6 +572,16 @@ func (m *Model) Resize(width, height int) {
 	}
 	for _, terrain := range m.terrain {
 		terrain.resize(m.Height)
+	}
+	for index := range m.ferns {
+		m.positionFern(&m.ferns[index])
+	}
+	for index := range m.grazers {
+		m.positionGrazer(&m.grazers[index])
+	}
+	m.anchorGrazers()
+	if m.grounded {
+		m.placeBalloonOnGround()
 	}
 }
 
@@ -477,6 +601,9 @@ func (m *Model) BurnerOn() bool { return m.burner }
 
 func (m *Model) Popped() bool { return m.popped }
 
+// Grounded reports whether the balloon is resting on its launch field.
+func (m *Model) Grounded() bool { return m.grounded }
+
 // Completed reports whether the balloon has crossed the stage goal.
 func (m *Model) Completed() bool { return m.completed }
 
@@ -488,6 +615,22 @@ func (m *Model) Stage() Stage { return StageAt(m.stageIndex) }
 
 // StageIndex returns the zero-based position in the journey.
 func (m *Model) StageIndex() int { return m.stageIndex }
+
+// ContinueToStage creates the next authored stage without interrupting the
+// balloon's flight. Stage-local world state is rebuilt while altitude, heat,
+// vertical velocity, and burner state carry across the finish flag.
+func (m *Model) ContinueToStage(stageIndex int) *Model {
+	next := NewStageModel(m.Width, m.Height, stageIndex)
+	x, y := m.balloon.Position()
+	next.grounded = false
+	next.heat = m.heat
+	next.vy = m.vy
+	next.balloon.SetPosition(x, y)
+	next.balloon.SetVelocity(0, next.vy)
+	next.SetBurner(m.burner)
+	next.clampBalloon()
+	return next
+}
 
 // SetBurner changes the sole flight control. Heat responds over time in Update.
 func (m *Model) SetBurner(on bool) {
@@ -527,10 +670,23 @@ func (m *Model) Update(step time.Duration) []sprite.Collision {
 		m.Elapsed += advance
 		m.popTime += advance
 		m.scene.Update(advance)
+		m.anchorGrazers()
 		if m.popTime >= balloonPopDuration {
 			m.stopped = true
 		}
 		return nil
+	}
+	dt := step.Seconds()
+	m.updateHeat(dt)
+	if m.grounded {
+		if maximumLift*m.heat <= gravity {
+			m.balloon.Update(step)
+			return nil
+		}
+		m.grounded = false
+		x, y := m.balloon.Position()
+		m.balloon.SetPosition(x, max(y-1, 0))
+		m.vy = -0.5
 	}
 	m.Elapsed += step
 	m.distance = min(m.distance+worldScrollSpeed*step.Seconds(), m.stage.GoalDistance)
@@ -540,25 +696,22 @@ func (m *Model) Update(step time.Duration) []sprite.Collision {
 			m.events = append(m.events, EventLightningStruck)
 		}
 	}
-	if m.pterosaur.updatePath(step) {
-		x, _ := m.pterosaur.sprite.Position()
-		frame, _ := m.pterosaur.sprite.ActiveFrame()
-		if x < float64(m.Width) && x+float64(frame.Width) > 0 {
-			m.events = append(m.events, EventPterosaurLunged)
+	for _, hazard := range []*pterosaurHazard{m.pterosaur, m.redEye} {
+		if hazard != nil && hazard.updatePath(step) {
+			x, _ := hazard.sprite.Position()
+			frame, _ := hazard.sprite.ActiveFrame()
+			if x < float64(m.Width) && x+float64(frame.Width) > 0 {
+				m.events = append(m.events, EventPterosaurLunged)
+			}
 		}
-	}
-	dt := step.Seconds()
-	if m.burner {
-		m.heat += (1 - m.heat) * (1 - math.Exp(-dt/heatResponse.Seconds()))
-	} else {
-		m.heat *= math.Exp(-dt / coolingResponse.Seconds())
 	}
 	m.vy = min(max(m.vy+(gravity-maximumLift*m.heat)*dt, -maximumRiseSpeed), maximumFallSpeed)
 	m.balloon.SetVelocity(0, m.vy)
 	collisions := m.scene.Update(step)
+	m.anchorGrazers()
 	for _, collision := range collisions {
 		other, hitsBalloon := collisionWith(m.balloon, collision)
-		if hitsBalloon && (other == m.storm.bolt || other == m.pterosaur.sprite || m.isGroundHazard(other)) {
+		if hitsBalloon && (other == m.storm.bolt || m.isPterosaurHazard(other) || m.isGroundHazard(other)) {
 			m.popBalloon()
 			break
 		}
@@ -590,11 +743,27 @@ func (m *Model) Update(step time.Duration) []sprite.Collision {
 		gap := 30 + m.random.Intn(60)
 		m.spawnPterosaur(float64(m.Width + gap))
 	}
+	if m.redEye != nil {
+		redEyeX, _ := m.redEye.sprite.Position()
+		redEyeFrame, _ := m.redEye.sprite.ActiveFrame()
+		if redEyeX+float64(redEyeFrame.Width) < 0 {
+			gap := 40 + m.random.Intn(70)
+			m.spawnRedEye(float64(m.Width + gap))
+		}
+	}
 	for _, terrain := range m.terrain {
 		terrain.replenish(m.scene, m.Width, m.Height)
 	}
 	m.clampBalloon()
 	return collisions
+}
+
+func (m *Model) updateHeat(dt float64) {
+	if m.burner {
+		m.heat += (1 - m.heat) * (1 - math.Exp(-dt/heatResponse.Seconds()))
+	} else {
+		m.heat *= math.Exp(-dt / coolingResponse.Seconds())
+	}
 }
 
 func collisionWith(target *sprite.Sprite, collision sprite.Collision) (*sprite.Sprite, bool) {
@@ -607,9 +776,18 @@ func collisionWith(target *sprite.Sprite, collision sprite.Collision) (*sprite.S
 	return nil, false
 }
 
+func (m *Model) isPterosaurHazard(candidate *sprite.Sprite) bool {
+	return candidate == m.pterosaur.sprite || m.redEye != nil && candidate == m.redEye.sprite
+}
+
 func (m *Model) isGroundHazard(candidate *sprite.Sprite) bool {
 	for _, tree := range m.trees {
 		if tree.sprite == candidate {
+			return true
+		}
+	}
+	for _, grazer := range m.grazers {
+		if grazer.sprite == candidate {
 			return true
 		}
 	}
@@ -640,11 +818,13 @@ func (m *Model) completeStage() {
 		return
 	}
 	m.completed = true
-	m.SetBurner(false)
-	m.vy = 0
-	m.balloon.SetVelocity(0, 0)
-	m.finish.SetVelocity(0, 0)
-	m.storm.bolt.Hide()
+	if m.stageIndex+1 >= StageCount() {
+		m.SetBurner(false)
+		m.vy = 0
+		m.balloon.SetVelocity(0, 0)
+		m.finish.SetVelocity(0, 0)
+		m.storm.bolt.Hide()
+	}
 	m.events = append(m.events, EventStageCompleted)
 }
 

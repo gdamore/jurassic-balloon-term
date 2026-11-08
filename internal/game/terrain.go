@@ -195,6 +195,26 @@ func (t *terrainLayer) contains(candidate *sprite.Sprite) bool {
 	return false
 }
 
+func (t *terrainLayer) surfaceYAt(screenX int) (int, bool) {
+	for _, chunk := range t.chunks {
+		frame, visible := chunk.ActiveFrame()
+		if !visible {
+			continue
+		}
+		position := chunk.CellPosition()
+		localX := screenX - position.X
+		if localX < 0 || localX >= frame.Width {
+			continue
+		}
+		for y := 0; y < frame.Height; y++ {
+			if frame.CellAt(localX, y).Rune != 0 {
+				return position.Y + y, true
+			}
+		}
+	}
+	return 0, false
+}
+
 func abs(value int) int {
 	if value < 0 {
 		return -value

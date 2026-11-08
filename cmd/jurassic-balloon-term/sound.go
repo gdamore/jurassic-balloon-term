@@ -49,6 +49,24 @@ func (s *gameSound) StageCompleted() {
 	_ = s.engine.SetMusic(audio.MusicVictory)
 }
 
+func (s *gameSound) SetMusicEnabled(enabled bool) {
+	gain := float32(0)
+	if enabled {
+		gain = 0.35
+	}
+	_ = s.engine.SetBusGain(audio.BusMusic, gain)
+}
+
+func (s *gameSound) SetEffectsEnabled(enabled bool) {
+	effects, ambience, ui := float32(0), float32(0), float32(0)
+	if enabled {
+		effects, ambience, ui = 1, 0.7, 0.8
+	}
+	_ = s.engine.SetBusGain(audio.BusEffects, effects)
+	_ = s.engine.SetBusGain(audio.BusAmbience, ambience)
+	_ = s.engine.SetBusGain(audio.BusUI, ui)
+}
+
 func (s *gameSound) Retry() {
 	_ = s.engine.SetContinuous(audio.ContinuousBurner, false)
 	_ = s.engine.SetEnvironment(audio.EnvironmentPrehistoricDay)

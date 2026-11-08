@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-func TestFernValleyTreesOccupySecondHalf(t *testing.T) {
+func TestFirstTwoStagesHaveAuthoredTreeLines(t *testing.T) {
 	stage := StageAt(0)
 	if len(stage.TreeDistances) != 5 {
 		t.Fatalf("Fern Valley tree count = %d, want 5", len(stage.TreeDistances))
@@ -20,7 +20,16 @@ func TestFernValleyTreesOccupySecondHalf(t *testing.T) {
 		}
 		previous = distance
 	}
-	for index := 1; index < StageCount(); index++ {
+	redEyeRun := StageAt(1)
+	if len(redEyeRun.TreeDistances) != 5 {
+		t.Fatalf("Red-Eye Run tree count = %d, want 5", len(redEyeRun.TreeDistances))
+	}
+	for index, distance := range redEyeRun.TreeDistances {
+		if distance <= 0 || distance >= redEyeRun.GoalDistance {
+			t.Fatalf("Red-Eye Run tree %d distance = %v outside stage", index, distance)
+		}
+	}
+	for index := 2; index < StageCount(); index++ {
 		if trees := StageAt(index).TreeDistances; len(trees) != 0 {
 			t.Fatalf("stage %d unexpectedly schedules trees at %v", index, trees)
 		}
@@ -49,8 +58,38 @@ func TestTreeArtworkIsAnimatedAndColored(t *testing.T) {
 	}
 }
 
+func TestGroveCyclesBroadleafPalmAndCycad(t *testing.T) {
+	want := []treeKind{treeBroadleaf, treeBroadleaf, treePalm, treeBroadleaf, treeCycad}
+	for index, kind := range want {
+		tree := newTree(index, float64(index*40))
+		if tree.kind != kind {
+			t.Errorf("tree %d kind = %v, want %v", index, tree.kind, kind)
+		}
+		frame, _ := tree.sprite.ActiveFrame()
+		if frame.Height != treeHeight {
+			t.Errorf("tree %d height = %d, want %d", index, frame.Height, treeHeight)
+		}
+	}
+}
+
+func TestPalmSwaysFrondsButKeepsLargeCrownAndFixedTrunk(t *testing.T) {
+	palm := newTree(2, 200)
+	left, _ := palm.sprite.ActiveFrame()
+	if left.Width != 9 {
+		t.Fatalf("palm width = %d, want 9", left.Width)
+	}
+	palm.sprite.Update(650 * time.Millisecond)
+	right, _ := palm.sprite.ActiveFrame()
+	for y := 2; y <= 8; y++ {
+		if left.CellAt(4, y) != right.CellAt(4, y) || left.CellAt(4, y).Rune != '█' {
+			t.Fatalf("palm trunk changed at row %d: left=%+v right=%+v", y, left.CellAt(4, y), right.CellAt(4, y))
+		}
+	}
+}
+
 func TestTreeCollisionPopsBalloon(t *testing.T) {
 	m := NewStageModel(80, 30, 0)
+	makeAirborne(m)
 	balloonX, balloonY := m.balloon.Position()
 	m.trees[0].sprite.SetPosition(balloonX, balloonY)
 
