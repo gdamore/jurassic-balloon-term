@@ -156,6 +156,27 @@ Later-stage concepts to explore, not current requirements:
   on/off as the primary gameplay input.
 - A start screen precedes the run and offers independent music and sound-effect
   toggles plus room for a short premise blurb.
+- The title screen shares the playfield's sky gradient and adds slowly scrolling
+  shaded clouds, a distant parallax ridge, and quarter-block foreground terrain
+  so it feels like part of the game world rather than a separate text menu.
+- Starting from the title enters a live stage with the balloon still grounded
+  and the world stopped. A centered playfield card prompts `SPACE / CLICK` to
+  launch; it remains until sustained heat actually lifts the balloon. `C` on
+  the title opens a credits view naming Garrett D'Amore, required Creative Commons audio
+  attributions, additional audio contributors, and core third-party libraries;
+  the repository retains full source links, modification notes, and notices.
+- `M` toggles music, `S` toggles sound effects and ambience, and `-`/`+`
+  adjust master volume in ten-percent steps. These audio controls remain
+  available during play and report changes through a brief centered notice.
+- `Q` and `Esc` return an active run to the title screen, including from
+  paused, popped, or completed states. They quit the application only when
+  pressed on the title screen. Audio preferences survive the return.
+- During flight, distance, heat, and signed vertical velocity use compact
+  two-column vertical gauges at the quiet left edge of the screen rather than
+  persistent text strips over the terrain. Brief stage notices appear in the
+  center. Pause, final completion, and `POPPED!` use persistent centered cards;
+  the popped card waits until the destruction animation finishes and remains
+  until the player retries.
 - Pterosaur lunges use two restrained CC0 designed-dinosaur calls rather than
   a synthetic squawk or shrill bird scream. Calls are limited to one every 2.2
   seconds to prevent each flap from becoming an audio interruption; this is
@@ -172,9 +193,16 @@ Later-stage concepts to explore, not current requirements:
 - The terminal balloon uses a compact three-frame, true-color burner flame.
   Terminal emoji are avoided because their width and presentation vary by
   terminal and font.
+- Its fatal pop uses a fast six-frame burst inspired by Proxima 5's compact
+  anime-like explosions: a white flash expands through yellow and orange,
+  breaks into red embers and brown envelope fragments, and leaves the basket
+  and worried pilot falling beneath it before the persistent retry card appears.
 - Modern terminal support for key-release events must be recognized. Kitty
   keyboard protocol and Win32 input mode can provide genuine press/release
   behavior. Capability detection and a legacy fallback are appropriate.
+- Mouse reporting is enabled where supported. Holding the primary mouse button
+  operates the burner exactly like holding Space, including reliable release
+  handling, while other buttons are ignored.
 
 The exact equations, heat/leak state, acceleration cap, velocity cap, and tuning
 constants are **not yet decisions**. They must be found through playtesting.

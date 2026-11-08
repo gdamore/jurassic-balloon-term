@@ -70,6 +70,10 @@ func (s *gameSound) SetEffectsEnabled(enabled bool) {
 	_ = s.engine.SetBusGain(audio.BusUI, ui)
 }
 
+func (s *gameSound) SetMasterVolume(volume float64) {
+	_ = s.engine.SetBusGain(audio.BusMaster, float32(volume))
+}
+
 func (s *gameSound) SetStage(stageIndex int) {
 	if stageIndex == 2 {
 		_ = s.engine.SetEnvironment(audio.EnvironmentStorm)

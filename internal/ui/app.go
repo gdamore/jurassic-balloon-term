@@ -4,6 +4,7 @@
 package ui
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/gdamore/jurassic-balloon-term/internal/game"
@@ -13,21 +14,32 @@ import (
 const (
 	updateStep      = 33 * time.Millisecond
 	burnerPulse     = 300 * time.Millisecond
+	stageOverlay    = 1500 * time.Millisecond
+	audioOverlay    = 1100 * time.Millisecond
 	preferredWidth  = 120
 	preferredHeight = 40
+	volumeSteps     = 10
 )
 
 // App coordinates terminal events, fixed simulation updates, and rendering.
 type App struct {
-	screen      tcell.Screen
-	model       *game.Model
-	sound       Sound
-	started     bool
-	music       bool
-	effects     bool
-	keyRelease  bool
-	burnerKeys  map[burnerKey]struct{}
-	burnerUntil time.Time
+	screen        tcell.Screen
+	model         *game.Model
+	sound         Sound
+	started       bool
+	credits       bool
+	music         bool
+	effects       bool
+	volume        int
+	keyRelease    bool
+	mouseBurner   bool
+	burnerKeys    map[burnerKey]struct{}
+	burnerUntil   time.Time
+	overlayTitle  string
+	overlayDetail string
+	overlayUntil  time.Time
+	overlayAudio  bool
+	titleTime     time.Duration
 }
 
 type burnerKey struct {
@@ -37,7 +49,7 @@ type burnerKey struct {
 }
 
 func New(screen tcell.Screen, sounds ...Sound) *App {
-	app := &App{screen: screen, music: true, effects: true}
+	app := &App{screen: screen, music: true, effects: true, volume: volumeSteps}
 	if len(sounds) != 0 {
 		app.sound = sounds[0]
 	}
@@ -52,6 +64,7 @@ func (a *App) Run() error {
 
 	a.screen.SetStyle(tcell.StyleDefault.Background(tcell.ColorBlack).Foreground(tcell.ColorWhite))
 	a.screen.HideCursor()
+	a.screen.EnableMouse(tcell.MouseButtonEvents)
 	width, height := a.screen.Size()
 	if width != preferredWidth || height != preferredHeight {
 		a.screen.SetSize(preferredWidth, preferredHeight)
@@ -84,9 +97,11 @@ func (a *App) Run() error {
 			a.draw()
 		case <-ticker.C:
 			if !a.started {
+				a.titleTime += updateStep
+				a.draw()
 				continue
 			}
-			if !a.keyRelease && a.model.BurnerOn() && time.Now().After(a.burnerUntil) {
+			if !a.keyRelease && !a.mouseBurner && a.model.BurnerOn() && time.Now().After(a.burnerUntil) {
 				a.setBurner(false)
 			}
 			a.model.Update(updateStep)
@@ -107,13 +122,32 @@ func (a *App) handleEvent(event tcell.Event) bool {
 		width, height := event.Size()
 		a.model.Resize(width, height)
 		a.screen.Sync()
+	case *tcell.EventMouse:
+		a.handleMouseEvent(event)
 	case *tcell.EventKey:
 		if event.Pressed() && isQuitEvent(event) {
+			if a.started {
+				a.returnToTitle()
+				return false
+			}
+			if a.credits {
+				a.credits = false
+				return false
+			}
 			return true
+		}
+		if !a.started && a.credits {
+			if event.Pressed() && event.Key() == tcell.KeyRune && (event.Str() == "c" || event.Str() == "C") {
+				a.credits = false
+			}
+			return false
 		}
 		if stageIndex, selected := selectedStage(event); selected {
 			a.resetStage(stageIndex)
 			a.started = true
+			return false
+		}
+		if a.handleAudioEvent(event) {
 			return false
 		}
 		if !a.started {
@@ -144,12 +178,8 @@ func (a *App) handleEvent(event tcell.Event) bool {
 			return false
 		}
 		switch event.Key() {
-		case tcell.KeyEscape:
-			return true
 		case tcell.KeyRune:
 			switch event.Str() {
-			case "q", "Q":
-				return true
 			case "p", "P":
 				a.model.TogglePause()
 				if a.sound != nil {
@@ -161,32 +191,121 @@ func (a *App) handleEvent(event tcell.Event) bool {
 	return false
 }
 
+func (a *App) returnToTitle() {
+	if a.sound != nil {
+		a.sound.SetPaused(false)
+	}
+	a.resetStage(0)
+	a.started = false
+	a.credits = false
+	a.titleTime = 0
+}
+
 func (a *App) handleStartEvent(event *tcell.EventKey) {
 	if !event.Pressed() {
 		return
 	}
-	if event.Key() == tcell.KeyRune {
-		switch event.Str() {
-		case "m", "M":
-			a.music = !a.music
-			if a.sound != nil {
-				a.sound.SetMusicEnabled(a.music)
-			}
-			return
-		case "s", "S":
-			a.effects = !a.effects
-			if a.sound != nil {
-				a.sound.SetEffectsEnabled(a.effects)
-			}
-			return
-		}
+	if event.Key() == tcell.KeyRune && (event.Str() == "c" || event.Str() == "C") {
+		a.credits = true
+		return
 	}
 	if event.Key() == tcell.KeyEnter || isBurnerEvent(event) {
 		a.started = true
-		if isBurnerEvent(event) {
-			a.handleBurnerEvent(event)
-		}
 	}
+}
+
+func (a *App) handleMouseEvent(event *tcell.EventMouse) {
+	if !a.started && a.credits {
+		return
+	}
+	buttons := event.Buttons()
+	if buttons != tcell.ButtonNone && buttons&tcell.ButtonPrimary == 0 {
+		return
+	}
+	pressed := buttons&tcell.ButtonPrimary != 0
+	if pressed == a.mouseBurner {
+		return
+	}
+	a.mouseBurner = pressed
+
+	if pressed {
+		if !a.started {
+			a.started = true
+			return
+		}
+		if a.model.Completed() {
+			next := a.model.StageIndex() + 1
+			if next >= game.StageCount() {
+				next = 0
+			}
+			a.resetStage(next)
+			return
+		}
+		if a.model.Popped() {
+			a.resetStage(a.model.StageIndex())
+			return
+		}
+		a.setBurner(true)
+		return
+	}
+
+	if !a.started {
+		return
+	}
+	if a.keyRelease {
+		a.setBurner(len(a.burnerKeys) != 0)
+		return
+	}
+	a.setBurner(time.Now().Before(a.burnerUntil))
+}
+
+func (a *App) handleAudioEvent(event *tcell.EventKey) bool {
+	if !event.Pressed() || event.Key() != tcell.KeyRune {
+		return false
+	}
+	switch event.Str() {
+	case "m", "M":
+		a.music = !a.music
+		if a.sound != nil {
+			a.sound.SetMusicEnabled(a.music)
+		}
+		a.showAudioOverlay("MUSIC " + enabledLabel(a.music))
+	case "s", "S":
+		a.effects = !a.effects
+		if a.sound != nil {
+			a.sound.SetEffectsEnabled(a.effects)
+		}
+		a.showAudioOverlay("SOUND " + enabledLabel(a.effects))
+	case "+", "=":
+		a.setVolume(a.volume + 1)
+	case "-", "_":
+		a.setVolume(a.volume - 1)
+	default:
+		return false
+	}
+	return true
+}
+
+func (a *App) setVolume(steps int) {
+	a.volume = min(max(steps, 0), volumeSteps)
+	if a.sound != nil {
+		a.sound.SetMasterVolume(float64(a.volume) / volumeSteps)
+	}
+	a.showAudioOverlay("VOLUME " + volumeLabel(a.volume))
+}
+
+func (a *App) showAudioOverlay(title string) {
+	if !a.started {
+		return
+	}
+	a.overlayTitle = title
+	a.overlayDetail = "M music  •  S sound  •  −/+ volume"
+	a.overlayUntil = time.Now().Add(audioOverlay)
+	a.overlayAudio = true
+}
+
+func volumeLabel(steps int) string {
+	return fmt.Sprintf("%d%%", min(max(steps, 0), volumeSteps)*100/volumeSteps)
 }
 
 func (a *App) resetStage(stageIndex int) {
@@ -196,7 +315,12 @@ func (a *App) resetStage(stageIndex int) {
 	}
 	a.model = game.NewStageModel(width, height, stageIndex)
 	a.burnerKeys = make(map[burnerKey]struct{})
+	a.mouseBurner = false
 	a.burnerUntil = time.Time{}
+	a.overlayTitle = ""
+	a.overlayDetail = ""
+	a.overlayUntil = time.Time{}
+	a.overlayAudio = false
 	if a.sound != nil {
 		a.sound.SetBurner(false)
 		a.sound.Retry()
@@ -268,7 +392,7 @@ func (a *App) handleBurnerEvent(event *tcell.EventKey) {
 	} else {
 		delete(a.burnerKeys, key)
 	}
-	a.setBurner(len(a.burnerKeys) != 0)
+	a.setBurner(len(a.burnerKeys) != 0 || a.mouseBurner)
 }
 
 func (a *App) setBurner(enabled bool) {
@@ -282,15 +406,19 @@ func (a *App) setBurner(enabled bool) {
 }
 
 func (a *App) handleGameEvents() {
-	if a.sound == nil {
-		return
-	}
 	for _, event := range a.model.Events() {
 		a.handleGameEvent(event)
 	}
 }
 
 func (a *App) handleGameEvent(event game.Event) {
+	if event == game.EventStageCompleted && a.model.StageIndex()+1 < game.StageCount() {
+		next := game.StageAt(a.model.StageIndex() + 1)
+		a.overlayTitle = "STAGE CLEAR"
+		a.overlayDetail = next.Name
+		a.overlayUntil = time.Now().Add(stageOverlay)
+		a.overlayAudio = false
+	}
 	if a.sound == nil {
 		return
 	}

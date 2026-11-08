@@ -49,6 +49,11 @@ const (
 	StyleLightningDim
 	StyleGroundStrike
 	StylePop
+	StylePopFlash
+	StylePopHot
+	StylePopEmber
+	StylePopDebris
+	StylePopBasket
 	StyleFarTerrain
 	StyleFarTerrainLava
 	StyleFarTerrainLavaGlow
@@ -239,39 +244,70 @@ func newBalloon() *sprite.Sprite {
 		"   ╰☺╯   ",
 	)
 	burn3.Duration, burn3.Next = 60*time.Millisecond, "burn-1"
-	pop1 := styledFrame(StylePop,
-		"    ✶    ",
-		" ╲  │  ╱ ",
-		"  ╲   ╱  ",
-		" ·  ╳  · ",
-		"    ☺    ",
-		"   ╱ ╲   ",
-		"         ",
-	)
-	pop1.Duration, pop1.Next = 120*time.Millisecond, "pop-2"
-	pop2 := styledFrame(StylePop,
-		" ·     · ",
-		"   ╲ ╱   ",
+	pop1 := balloonPopFrame(
 		"    ✦    ",
-		" ╱     ╲ ",
-		"    ☺    ",
-		"   ╱ ╲   ",
-		"         ",
+		"  ╲ █ ╱  ",
+		"   ███   ",
+		"──█████──",
+		"   ███   ",
+		"  ╱ █ ╲  ",
+		"   ╰☺╯   ",
 	)
-	pop2.Duration, pop2.Next = 150*time.Millisecond, "pop-3"
-	pop3 := styledFrame(StylePop,
-		"·       ·",
-		"         ",
-		"  ·   ·  ",
-		"         ",
-		"    ☺    ",
-		"   ╱ ╲   ",
-		"         ",
+	pop1.Duration, pop1.Next = 55*time.Millisecond, "pop-2"
+	pop2 := balloonPopFrame(
+		" ▗▓███▓▖ ",
+		"▓███████▓",
+		"█████████",
+		"▓███████▓",
+		" ▝▓███▓▘ ",
+		"◢   │   ◣",
+		"   ╰☺╯   ",
 	)
-	pop3.Duration, pop3.Next = 350*time.Millisecond, ""
+	pop2.Duration, pop2.Next = 70*time.Millisecond, "pop-3"
+	pop3 := balloonPopFrame(
+		"▓▒▒▓▓▓▒▒▓",
+		"▒▓█████▓▒",
+		"▓██▒█▒██▓",
+		"▒█▒   ▒█▒",
+		"▓▒██▒██▒▓",
+		"◢ ◆ │ ◆ ◣",
+		"   ╰☺╯   ",
+	)
+	pop3.Duration, pop3.Next = 85*time.Millisecond, "pop-4"
+	pop4 := balloonPopFrame(
+		"░▒▓▘ ▝▓▒░",
+		"▒▓▘   ▝▓▒",
+		"▓▘ ▗▒▖ ▝▓",
+		"▒  ▒ ▒  ▒",
+		"▓▖ ▝▒▘ ▗▓",
+		" ◆◢ │ ◣◆ ",
+		"   ╰☹╯   ",
+	)
+	pop4.Duration, pop4.Next = 100*time.Millisecond, "pop-5"
+	pop5 := balloonPopFrame(
+		"░ ◆   ◆ ░",
+		"  ░   ░  ",
+		"◆   ░   ◆",
+		" ░     ░ ",
+		"  ◢   ◣  ",
+		"    │    ",
+		"   ╰☹╯   ",
+	)
+	pop5.Duration, pop5.Next = 130*time.Millisecond, "pop-6"
+	pop6 := balloonPopFrame(
+		"•       •",
+		"   ◆ ◆   ",
+		"         ",
+		" ◆     ◆ ",
+		"         ",
+		"    │    ",
+		"   ╰☹╯   ",
+	)
+	pop6.Duration, pop6.Next = 180*time.Millisecond, ""
 	for name, frame := range map[string]sprite.Frame{
 		"off": off, "burn-1": burn1, "burn-2": burn2, "burn-3": burn3,
 		"pop-1": pop1, "pop-2": pop2, "pop-3": pop3,
+		"pop-4": pop4, "pop-5": pop5, "pop-6": pop6,
 	} {
 		if err := balloon.AddFrame(name, frame); err != nil {
 			panic(err)
@@ -282,6 +318,31 @@ func newBalloon() *sprite.Sprite {
 	}
 	balloon.SetLayer(balloonLayer)
 	return balloon
+}
+
+func balloonPopFrame(rows ...string) sprite.Frame {
+	frame := styledFrame(StylePop, rows...)
+	for index := range frame.Cells {
+		cell := &frame.Cells[index]
+		cell.NoCollision = true
+		switch cell.Rune {
+		case '█', '✦', '✶', '─', '╲', '╱':
+			cell.Style = StylePopFlash
+		case '▓':
+			cell.Style = StylePopHot
+		case '▒':
+			cell.Style = StylePop
+		case '░', '•':
+			cell.Style = StylePopEmber
+		case '▗', '▖', '▘', '▝', '◢', '◣', '◆':
+			cell.Style = StylePopDebris
+		case '╰', '╯', '│':
+			cell.Style = StylePopBasket
+		case '☺', '☹':
+			cell.Style = StylePilot
+		}
+	}
+	return frame
 }
 
 func balloonFrame(rows ...string) sprite.Frame {
@@ -800,11 +861,24 @@ func (m *Model) BalloonY() float64 {
 
 func (m *Model) VerticalVelocity() float64 { return m.vy }
 
+// VerticalVelocityRatio returns signed vertical speed normalized to the
+// asymmetric rise and fall caps. Rising is negative and falling is positive.
+func (m *Model) VerticalVelocityRatio() float64 {
+	if m.vy < 0 {
+		return m.vy / maximumRiseSpeed
+	}
+	return m.vy / maximumFallSpeed
+}
+
 func (m *Model) Heat() float64 { return m.heat }
 
 func (m *Model) BurnerOn() bool { return m.burner }
 
 func (m *Model) Popped() bool { return m.popped }
+
+// PopAnimationComplete reports when the destruction animation has finished
+// and the game is waiting for a retry.
+func (m *Model) PopAnimationComplete() bool { return m.popped && m.stopped }
 
 // Grounded reports whether the balloon is resting on its launch field.
 func (m *Model) Grounded() bool { return m.grounded }

@@ -272,3 +272,58 @@ func TestVerticalSpeedIsCapped(t *testing.T) {
 		t.Fatalf("rise speed = %v, want %v", got, -maximumRiseSpeed)
 	}
 }
+
+func TestVerticalVelocityRatioUsesAsymmetricCaps(t *testing.T) {
+	m := NewModel(80, 30)
+	m.vy = -maximumRiseSpeed
+	if got := m.VerticalVelocityRatio(); got != -1 {
+		t.Fatalf("maximum rise ratio = %v, want -1", got)
+	}
+	m.vy = maximumFallSpeed
+	if got := m.VerticalVelocityRatio(); got != 1 {
+		t.Fatalf("maximum fall ratio = %v, want 1", got)
+	}
+}
+
+func TestPopAnimationCompleteOnlyAfterAnimation(t *testing.T) {
+	m := NewModel(80, 30)
+	m.popBalloon()
+	if m.PopAnimationComplete() {
+		t.Fatal("pop animation reported complete immediately")
+	}
+	m.Update(balloonPopDuration)
+	if !m.PopAnimationComplete() {
+		t.Fatal("pop animation did not report complete after its duration")
+	}
+}
+
+func TestBalloonPopUsesFastLayeredExplosion(t *testing.T) {
+	balloon := newBalloon()
+	names := []string{"pop-1", "pop-2", "pop-3", "pop-4", "pop-5", "pop-6"}
+	total := time.Duration(0)
+	styles := map[int]bool{}
+	for _, name := range names {
+		if err := balloon.SetFrame(name); err != nil {
+			t.Fatal(err)
+		}
+		frame, visible := balloon.ActiveFrame()
+		if !visible || frame.Width != 9 || frame.Height != 7 {
+			t.Fatalf("%s dimensions = %dx%d visible:%t, want 9x7", name, frame.Width, frame.Height, visible)
+		}
+		total += frame.Duration
+		for _, cell := range frame.Cells {
+			if cell.Rune != 0 && !cell.NoCollision {
+				t.Fatalf("%s has collidable explosion cell %+v", name, cell)
+			}
+			styles[cell.Style] = true
+		}
+	}
+	if total != balloonPopDuration {
+		t.Fatalf("pop frame duration = %v, want %v", total, balloonPopDuration)
+	}
+	for _, style := range []int{StylePopFlash, StylePopHot, StylePop, StylePopEmber, StylePopDebris, StylePopBasket, StylePilot} {
+		if !styles[style] {
+			t.Errorf("pop animation does not use style %d", style)
+		}
+	}
+}
