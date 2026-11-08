@@ -97,6 +97,27 @@ func TestGrazerIsAnchoredToForegroundSurface(t *testing.T) {
 	}
 }
 
+func TestGrazerKeepsStableAnchorWhileTerrainScrolls(t *testing.T) {
+	m := NewStageModel(120, 40, 3)
+	grazer := &m.grazers[1]
+	grazer.sprite.SetPosition(40.25, 30)
+	grazer.anchored = false
+	m.anchorGrazers()
+	if !grazer.anchored {
+		t.Fatal("visible grazer did not acquire a terrain anchor")
+	}
+	_, anchoredY := grazer.sprite.Position()
+
+	// Once attached to its world-space patch of terrain, rasterized foot
+	// columns must not make the animal hop between adjacent terrain cells.
+	grazer.sprite.SetPosition(41.25, anchoredY)
+	m.anchorGrazers()
+	_, gotY := grazer.sprite.Position()
+	if gotY != anchoredY {
+		t.Fatalf("grazer anchor moved from %v to %v while scrolling", anchoredY, gotY)
+	}
+}
+
 func TestGrazerCollisionPopsBalloon(t *testing.T) {
 	m := NewStageModel(80, 30, 0)
 	makeAirborne(m)

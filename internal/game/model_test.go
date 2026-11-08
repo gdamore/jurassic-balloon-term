@@ -69,6 +69,28 @@ func TestBalloonWaitsOnGroundUntilBurnerProducesLift(t *testing.T) {
 	}
 }
 
+func TestInvincibilityIgnoresDamageButKeepsCollisionDetection(t *testing.T) {
+	m := NewStageModel(80, 30, 0)
+	makeAirborne(m)
+	m.SetInvincible(true)
+	x, y := m.balloon.Position()
+	m.trees[0].sprite.SetPosition(x, y)
+
+	collisions := m.Update(time.Millisecond)
+	if len(collisions) == 0 {
+		t.Fatal("invincible contact was not detected")
+	}
+	if m.Popped() {
+		t.Fatal("invincible contact popped the balloon")
+	}
+
+	m.SetInvincible(false)
+	m.Update(time.Millisecond)
+	if !m.Popped() {
+		t.Fatal("damage remained disabled after leaving invincible mode")
+	}
+}
+
 func TestUpdateAnimatesBalloon(t *testing.T) {
 	m := NewModel(20, 10)
 	if got := m.balloon.FrameName(); got != "off" {

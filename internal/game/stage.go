@@ -14,20 +14,21 @@ const (
 // distances from the stage start; persistence and restart behavior will be
 // layered on once stage encounters are authored.
 type Stage struct {
-	Name            string
-	TargetDuration  time.Duration
-	GoalDistance    float64
-	Checkpoints     []float64
-	TreeDistances   []float64
-	FernDistances   []float64
-	GrazerDistances []float64
-	StormFronts     int
-	GroundStorms    int
-	PersistentRain  bool
-	DarkCloudsOnly  bool
-	Pterosaurs      bool
-	PterosaurGroups []PterosaurGroup
-	ScrollSpeed     float64
+	Name              string
+	TargetDuration    time.Duration
+	GoalDistance      float64
+	Checkpoints       []float64
+	TreeDistances     []float64
+	FernDistances     []float64
+	GrazerDistances   []float64
+	SauropodDistances []float64
+	StormFronts       int
+	GroundStorms      int
+	PersistentRain    bool
+	DarkCloudsOnly    bool
+	Pterosaurs        bool
+	PterosaurGroups   []PterosaurGroup
+	ScrollSpeed       float64
 }
 
 // PterosaurGroup describes one authored flock encounter.
@@ -35,6 +36,7 @@ type PterosaurGroup struct {
 	Distance float64
 	Count    int
 	RedEyes  int
+	Altitude float64
 }
 
 var stages = []Stage{
@@ -68,7 +70,28 @@ var stages = []Stage{
 		),
 		0.40, 0.425,
 	),
-	newStage("Long-Neck Grove", 210*time.Second, 70*time.Second, 140*time.Second),
+	withPterosaurGroups(
+		withoutPterosaurs(
+			withSauropods(
+				withGrazers(
+					withFerns(
+						withTrees(newStage("Long-Neck Grove", 210*time.Second, 70*time.Second, 140*time.Second),
+							0.13, 0.25, 0.37, 0.50, 0.63, 0.76, 0.88,
+						),
+						0.04, 0.18, 0.32, 0.46, 0.60, 0.74, 0.88,
+					),
+					0.045, 0.070, 0.48, 0.505,
+				),
+				0.08, 0.115, 0.15,
+				0.31, 0.345,
+				0.53, 0.565, 0.60,
+				0.78, 0.815, 0.85,
+			),
+		),
+		pterosaurGroupSpec{fraction: 0.23, count: 1, altitude: 0.18},
+		pterosaurGroupSpec{fraction: 0.44, count: 1, altitude: 0.15},
+		pterosaurGroupSpec{fraction: 0.69, count: 1, altitude: 0.20},
+	),
 	newStage("Carnivore Country", 4*time.Minute, time.Minute, 2*time.Minute, 3*time.Minute),
 }
 
@@ -76,6 +99,7 @@ type pterosaurGroupSpec struct {
 	fraction float64
 	count    int
 	redEyes  int
+	altitude float64
 }
 
 func withPterosaurGroups(stage Stage, specs ...pterosaurGroupSpec) Stage {
@@ -85,6 +109,7 @@ func withPterosaurGroups(stage Stage, specs ...pterosaurGroupSpec) Stage {
 			Distance: stage.GoalDistance * spec.fraction,
 			Count:    spec.count,
 			RedEyes:  spec.redEyes,
+			Altitude: spec.altitude,
 		}
 	}
 	return stage
@@ -100,6 +125,11 @@ func withStorm(stage Stage, fronts int) Stage {
 	return stage
 }
 
+func withoutPterosaurs(stage Stage) Stage {
+	stage.Pterosaurs = false
+	return stage
+}
+
 func withScrollSpeed(stage Stage, speed float64) Stage {
 	ratio := speed / stage.ScrollSpeed
 	stage.ScrollSpeed = speed
@@ -107,7 +137,7 @@ func withScrollSpeed(stage Stage, speed float64) Stage {
 	for index := range stage.Checkpoints {
 		stage.Checkpoints[index] *= ratio
 	}
-	for _, distances := range [][]float64{stage.TreeDistances, stage.FernDistances, stage.GrazerDistances} {
+	for _, distances := range [][]float64{stage.TreeDistances, stage.FernDistances, stage.GrazerDistances, stage.SauropodDistances} {
 		for index := range distances {
 			distances[index] *= ratio
 		}
@@ -119,6 +149,14 @@ func withGrazers(stage Stage, fractions ...float64) Stage {
 	stage.GrazerDistances = make([]float64, len(fractions))
 	for index, fraction := range fractions {
 		stage.GrazerDistances[index] = stage.GoalDistance * fraction
+	}
+	return stage
+}
+
+func withSauropods(stage Stage, fractions ...float64) Stage {
+	stage.SauropodDistances = make([]float64, len(fractions))
+	for index, fraction := range fractions {
+		stage.SauropodDistances[index] = stage.GoalDistance * fraction
 	}
 	return stage
 }
@@ -169,6 +207,7 @@ func StageAt(index int) Stage {
 	stage.TreeDistances = append([]float64(nil), stage.TreeDistances...)
 	stage.FernDistances = append([]float64(nil), stage.FernDistances...)
 	stage.GrazerDistances = append([]float64(nil), stage.GrazerDistances...)
+	stage.SauropodDistances = append([]float64(nil), stage.SauropodDistances...)
 	stage.PterosaurGroups = append([]PterosaurGroup(nil), stage.PterosaurGroups...)
 	return stage
 }

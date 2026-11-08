@@ -1,6 +1,6 @@
 # Jurassic Balloon Term
 
-Current version: **0.1.3**
+Current version: **0.2**
 
 A terminal-native version of Jurassic Balloon, built in Go with
 [tcell](https://github.com/gdamore/tcell).

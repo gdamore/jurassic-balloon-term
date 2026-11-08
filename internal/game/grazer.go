@@ -19,6 +19,7 @@ var grazerFootColumns = [...]int{3, 4, 6, 7}
 type grazerTrack struct {
 	sprite   *sprite.Sprite
 	distance float64
+	anchored bool
 }
 
 func newGrazer(index int, distance float64) grazerTrack {

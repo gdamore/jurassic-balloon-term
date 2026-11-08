@@ -65,6 +65,9 @@ func (m *Model) inheritWorld(previous *Model) {
 	for _, grazer := range previous.grazers {
 		m.carryDeparting(grazer.sprite, true)
 	}
+	for _, longNeck := range previous.sauropods {
+		m.carryDeparting(longNeck.sprite, true)
+	}
 	m.carryDeparting(previous.finish, false)
 	for _, item := range previous.departing {
 		_, hazardous := previous.departingHazards[item]
@@ -213,6 +216,9 @@ func (m *Model) applyScrollSpeed(speed float64) {
 	}
 	for _, grazer := range m.grazers {
 		grazer.sprite.SetVelocity(-speed, 0)
+	}
+	for _, longNeck := range m.sauropods {
+		longNeck.sprite.SetVelocity(-speed, 0)
 	}
 	if m.finish != nil && !m.completed {
 		m.finish.SetVelocity(-speed, 0)

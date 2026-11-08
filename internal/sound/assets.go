@@ -34,7 +34,6 @@ var decodedAssets = sync.OnceValue(func() map[string]audio.Clip {
 		"effect_pterosaur_2.ogg",
 		"effect_dinosaur_1.ogg",
 		"effect_dinosaur_2.ogg",
-		"effect_sauropod.ogg",
 		"effect_carnivore.ogg",
 	}
 	clips := make(map[string]audio.Clip, len(names))

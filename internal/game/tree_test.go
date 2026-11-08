@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-func TestFirstTwoStagesHaveAuthoredTreeLines(t *testing.T) {
+func TestAuthoredStagesHaveTreeLines(t *testing.T) {
 	stage := StageAt(0)
 	if len(stage.TreeDistances) != 5 {
 		t.Fatalf("Fern Valley tree count = %d, want 5", len(stage.TreeDistances))
@@ -33,7 +33,11 @@ func TestFirstTwoStagesHaveAuthoredTreeLines(t *testing.T) {
 	if len(thunderhead.TreeDistances) != 6 {
 		t.Fatalf("Thunderhead Pass tree count = %d, want 6", len(thunderhead.TreeDistances))
 	}
-	for index := 3; index < StageCount(); index++ {
+	longNeckGrove := StageAt(3)
+	if len(longNeckGrove.TreeDistances) != 7 {
+		t.Fatalf("Long-Neck Grove tree count = %d, want 7", len(longNeckGrove.TreeDistances))
+	}
+	for index := 4; index < StageCount(); index++ {
 		if trees := StageAt(index).TreeDistances; len(trees) != 0 {
 			t.Fatalf("stage %d unexpectedly schedules trees at %v", index, trees)
 		}

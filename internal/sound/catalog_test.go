@@ -59,6 +59,24 @@ func TestPterosaurCallUsesSpacedRecordedVariants(t *testing.T) {
 	}
 }
 
+func TestSauropodCallUsesDedicatedDeepBellow(t *testing.T) {
+	catalog := Catalog()
+	if got := catalog.Cues[audio.CueDistantSauropod]; got != soundSauropod {
+		t.Fatalf("sauropod cue = %q, want %q", got, soundSauropod)
+	}
+	call := catalog.Sounds[soundSauropod]
+	if call.Bus != audio.BusEffects || call.Gain < 0.4 || call.MaxVoices != 1 || call.Cooldown < 3*time.Second {
+		t.Fatalf("sauropod mix = bus:%v gain:%v voices:%d cooldown:%v", call.Bus, call.Gain, call.MaxVoices, call.Cooldown)
+	}
+	if len(call.Variants) != 1 {
+		t.Fatalf("sauropod variants = %d, want 1", len(call.Variants))
+	}
+	duration := time.Duration(len(call.Variants[0].PCM)/audio.DefaultChannels) * time.Second / audio.DefaultSampleRate
+	if duration < 1500*time.Millisecond || duration > 2*time.Second {
+		t.Fatalf("sauropod duration = %v, want a focused 1.5–2 second bellow", duration)
+	}
+}
+
 func TestDayAmbienceUsesJungleBedWithoutCreatureEffects(t *testing.T) {
 	catalog := Catalog()
 	scene := catalog.Ambience[audio.EnvironmentPrehistoricDay]

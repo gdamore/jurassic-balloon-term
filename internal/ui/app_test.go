@@ -4,6 +4,7 @@
 package ui
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -210,6 +211,7 @@ type recordingSound struct {
 	pterosaurs   int
 	lightning    int
 	groundStrike int
+	sauropods    int
 	completed    int
 	music        []bool
 	effects      []bool
@@ -224,6 +226,7 @@ func (s *recordingSound) BalloonPopped()         { s.pops++ }
 func (s *recordingSound) PterosaurLunged()       { s.pterosaurs++ }
 func (s *recordingSound) LightningStruck()       { s.lightning++ }
 func (s *recordingSound) GroundLightningStruck() { s.groundStrike++ }
+func (s *recordingSound) SauropodCalled()        { s.sauropods++ }
 func (s *recordingSound) StageCompleted()        { s.completed++ }
 func (s *recordingSound) SetMusicEnabled(on bool) {
 	s.music = append(s.music, on)
@@ -248,14 +251,15 @@ func TestSoundTracksBurnerAndGameEvents(t *testing.T) {
 	a.handleGameEvent(game.EventPterosaurLunged)
 	a.handleGameEvent(game.EventLightningStruck)
 	a.handleGameEvent(game.EventGroundLightningStruck)
+	a.handleGameEvent(game.EventSauropodCalled)
 	a.handleGameEvent(game.EventBalloonPopped)
 	a.handleGameEvent(game.EventStageCompleted)
 
 	if len(sound.burner) != 4 || !sound.burner[0] || sound.burner[1] || sound.burner[2] || sound.burner[3] {
 		t.Fatalf("burner sound changes = %v, want [true false false false]", sound.burner)
 	}
-	if sound.pterosaurs != 1 || sound.lightning != 1 || sound.groundStrike != 1 || sound.pops != 1 || sound.completed != 1 {
-		t.Fatalf("cue counts = pterosaur:%d lightning:%d ground:%d pop:%d complete:%d, want 1 each", sound.pterosaurs, sound.lightning, sound.groundStrike, sound.pops, sound.completed)
+	if sound.pterosaurs != 1 || sound.lightning != 1 || sound.groundStrike != 1 || sound.sauropods != 1 || sound.pops != 1 || sound.completed != 1 {
+		t.Fatalf("cue counts = pterosaur:%d lightning:%d ground:%d sauropod:%d pop:%d complete:%d, want 1 each", sound.pterosaurs, sound.lightning, sound.groundStrike, sound.sauropods, sound.pops, sound.completed)
 	}
 }
 
@@ -447,5 +451,57 @@ func TestStageSelectionRequiresKeyPress(t *testing.T) {
 	release := tcell.NewEventKeyEx(tcell.KeyRune, "2", tcell.ModNone, false, tcell.KeyRune, 1)
 	if index, selected := selectedStage(release); selected {
 		t.Fatalf("stage selected on key release: %d", index)
+	}
+}
+
+func TestControlITogglesPersistentInvincibility(t *testing.T) {
+	a := New(nil)
+	a.model = game.NewModel(80, 24)
+	a.started = true
+	a.burnerKeys = make(map[burnerKey]struct{})
+	press := tcell.NewEventKeyEx(tcell.KeyRune, "i", tcell.ModCtrl, true, tcell.Key('i'), 1)
+	release := tcell.NewEventKeyEx(tcell.KeyRune, "i", tcell.ModCtrl, false, tcell.Key('i'), 1)
+
+	a.handleEvent(press)
+	if !a.invincible || !a.model.Invincible() || a.overlayTitle != "INVINCIBLE ON" {
+		t.Fatalf("enabled state = app:%t model:%t overlay:%q", a.invincible, a.model.Invincible(), a.overlayTitle)
+	}
+	a.handleEvent(release)
+	if !a.invincible {
+		t.Fatal("Ctrl-I release toggled invincibility")
+	}
+	a.resetStage(1)
+	if !a.model.Invincible() {
+		t.Fatal("invincibility did not survive stage reset")
+	}
+	a.handleEvent(press)
+	if a.invincible || a.model.Invincible() || a.overlayTitle != "INVINCIBLE OFF" {
+		t.Fatalf("disabled state = app:%t model:%t overlay:%q", a.invincible, a.model.Invincible(), a.overlayTitle)
+	}
+}
+
+func TestLegacyTabTogglesInvincibility(t *testing.T) {
+	a := New(nil)
+	a.model = game.NewModel(80, 24)
+	a.started = true
+	a.burnerKeys = make(map[burnerKey]struct{})
+	a.handleEvent(tcell.NewEventKey(tcell.KeyTab, "", tcell.ModNone))
+	if !a.model.Invincible() {
+		t.Fatal("legacy Ctrl-I/Tab event did not enable invincibility")
+	}
+}
+
+func TestPauseOverlayIncludesReproductionCoordinates(t *testing.T) {
+	a := New(nil)
+	a.model = game.NewStageModel(120, 40, 3)
+	a.model.Update(1250 * time.Millisecond)
+	title, detail := a.pauseOverlayText()
+	if title != "PAUSED — 4/5 LONG-NECK GROVE" {
+		t.Fatalf("pause title = %q", title)
+	}
+	for _, marker := range []string{"D ", "/672", "Y ", "V ", "P resumes"} {
+		if !strings.Contains(detail, marker) {
+			t.Errorf("pause detail %q lacks %q", detail, marker)
+		}
 	}
 }
