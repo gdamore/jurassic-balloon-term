@@ -8,24 +8,6 @@ import (
 	"time"
 )
 
-func TestMoveStaysInBounds(t *testing.T) {
-	m := NewModel(20, 10)
-
-	for range 20 {
-		m.Move(-1, -1)
-	}
-	if position := m.BalloonPosition(); position.X != 0 || position.Y != 0 {
-		t.Fatalf("move above bounds = %v, want (0, 0)", position)
-	}
-
-	for range 20 {
-		m.Move(1, 1)
-	}
-	if position := m.BalloonPosition(); position.X != 15 || position.Y != 6 {
-		t.Fatalf("move below bounds = %v, want (15, 6)", position)
-	}
-}
-
 func TestUpdateHonorsPause(t *testing.T) {
 	m := NewModel(20, 10)
 	m.Update(10 * time.Millisecond)
@@ -39,21 +21,164 @@ func TestUpdateHonorsPause(t *testing.T) {
 
 func TestResizeClampsPosition(t *testing.T) {
 	m := NewModel(80, 24)
-	m.Move(100, 100)
+	m.balloon.SetPosition(100, 100)
 	m.Resize(10, 5)
 
-	if position := m.BalloonPosition(); position.X != 5 || position.Y != 1 {
-		t.Fatalf("position after resize = %v, want (5, 1)", position)
+	if position := m.BalloonPosition(); position.X != 1 || position.Y != 0 {
+		t.Fatalf("position after resize = %v, want (1, 0)", position)
 	}
 }
 
 func TestUpdateAnimatesBalloon(t *testing.T) {
 	m := NewModel(20, 10)
-	if got := m.Sprites()[0].FrameName(); got != "sway-left" {
-		t.Fatalf("initial frame = %q, want sway-left", got)
+	if got := m.balloon.FrameName(); got != "off" {
+		t.Fatalf("initial frame = %q, want off", got)
 	}
 	m.Update(300 * time.Millisecond)
-	if got := m.Sprites()[0].FrameName(); got != "sway-right" {
-		t.Fatalf("frame after update = %q, want sway-right", got)
+	if got := m.balloon.FrameName(); got != "off" {
+		t.Fatalf("frame after update = %q, want off", got)
+	}
+
+	m.SetBurner(true)
+	if got := m.balloon.FrameName(); got != "burn-1" {
+		t.Fatalf("burner frame = %q, want burn-1", got)
+	}
+	m.Update(100 * time.Millisecond)
+	if got := m.balloon.FrameName(); got != "burn-2" {
+		t.Fatalf("burner frame after update = %q, want burn-2", got)
+	}
+}
+
+func TestBalloonEnvelopeHasOpaqueFill(t *testing.T) {
+	m := NewModel(40, 20)
+	frame, _ := m.balloon.ActiveFrame()
+	cell := frame.CellAt(4, 1)
+	if cell.Rune != ' ' || cell.Style != StyleBalloonFill {
+		t.Fatalf("envelope interior = %+v, want opaque fill style", cell)
+	}
+	bounds, _ := m.balloon.Bounds()
+	if !m.balloon.CollidesAt(bounds.Min.X+4, bounds.Min.Y+1) {
+		t.Fatal("opaque envelope interior is absent from balloon mask")
+	}
+	if cell := frame.CellAt(0, 0); cell.Rune != 0 {
+		t.Fatalf("outside of envelope is opaque: %+v", cell)
+	}
+}
+
+func TestCloudDepthAndMotion(t *testing.T) {
+	m := NewModel(100, 30)
+	if len(m.clouds) != 5 {
+		t.Fatalf("cloud count = %d, want 5", len(m.clouds))
+	}
+
+	farX, _ := m.clouds[0].sprite.Position()
+	nearX, _ := m.clouds[3].sprite.Position()
+	m.Update(time.Second)
+	farAfter, _ := m.clouds[0].sprite.Position()
+	nearAfter, _ := m.clouds[3].sprite.Position()
+	if farX-farAfter >= nearX-nearAfter {
+		t.Fatalf("far cloud moved %v cells, near cloud moved %v; near should move faster", farX-farAfter, nearX-nearAfter)
+	}
+	if m.clouds[0].sprite.Layer() >= m.balloon.Layer() || m.clouds[3].sprite.Layer() <= m.balloon.Layer() {
+		t.Fatal("cloud layers do not straddle balloon layer")
+	}
+	for _, cloud := range m.clouds {
+		if cloud.sprite.Collidable() {
+			t.Fatalf("cloud %q is collidable", cloud.sprite.Name())
+		}
+	}
+}
+
+func TestFarCloudOutlinesCloseAtBothEdges(t *testing.T) {
+	for variation := range 3 {
+		frame := newCloudFrame(StyleFarCloud, variation)
+		for y := 1; y < frame.Height; y++ {
+			left := frame.CellAt(0, y).Rune
+			right := frame.CellAt(frame.Width-1, y).Rune
+			if left == 0 || right == 0 {
+				t.Errorf("variation %d row %d has open edge: left=%q right=%q", variation, y, left, right)
+			}
+		}
+	}
+}
+
+func TestCloudLeavingScreenIsReplaced(t *testing.T) {
+	m := NewModel(80, 24)
+	old := m.clouds[0]
+	frame, _ := old.sprite.ActiveFrame()
+	old.sprite.SetPosition(float64(-frame.Width-1), 4)
+
+	m.Update(33 * time.Millisecond)
+	replacement := m.clouds[0]
+	if replacement.sprite == old.sprite {
+		t.Fatal("departed cloud was repositioned instead of replaced")
+	}
+	if replacement.depth != old.depth {
+		t.Fatalf("replacement depth = %v, want %v", replacement.depth, old.depth)
+	}
+	x, _ := replacement.sprite.Position()
+	if x <= float64(m.Width) {
+		t.Fatalf("replacement cloud x = %v, want beyond right edge %d", x, m.Width)
+	}
+	for _, item := range m.Sprites() {
+		if item == old.sprite {
+			t.Fatal("departed cloud remains in scene")
+		}
+	}
+}
+
+func TestGravityAndBurnerControlVerticalMotion(t *testing.T) {
+	m := NewModel(80, 40)
+	start := m.BalloonY()
+	for range 10 {
+		m.Update(33 * time.Millisecond)
+	}
+	if m.BalloonY() <= start || m.VerticalVelocity() <= 0 {
+		t.Fatalf("gravity did not make balloon fall: y=%v start=%v vy=%v", m.BalloonY(), start, m.VerticalVelocity())
+	}
+
+	m.SetBurner(true)
+	for range 60 {
+		m.Update(33 * time.Millisecond)
+	}
+	if m.VerticalVelocity() >= 0 {
+		t.Fatalf("burner did not reverse descent: vy=%v heat=%v", m.VerticalVelocity(), m.Heat())
+	}
+	if m.Heat() <= 0.9 {
+		t.Fatalf("heat after sustained burn = %v, want > 0.9", m.Heat())
+	}
+}
+
+func TestBurnerHeatDecaysAfterRelease(t *testing.T) {
+	m := NewModel(80, 40)
+	m.SetBurner(true)
+	for range 30 {
+		m.Update(33 * time.Millisecond)
+	}
+	heated := m.Heat()
+	m.SetBurner(false)
+	for range 30 {
+		m.Update(33 * time.Millisecond)
+	}
+	if m.Heat() >= heated {
+		t.Fatalf("heat after release = %v, want less than %v", m.Heat(), heated)
+	}
+}
+
+func TestVerticalSpeedIsCapped(t *testing.T) {
+	m := NewModel(80, 1000)
+	for range 1000 {
+		m.Update(33 * time.Millisecond)
+	}
+	if got := m.VerticalVelocity(); got != maximumFallSpeed {
+		t.Fatalf("fall speed = %v, want %v", got, maximumFallSpeed)
+	}
+
+	m.SetBurner(true)
+	for range 1000 {
+		m.Update(33 * time.Millisecond)
+	}
+	if got := m.VerticalVelocity(); got != -maximumRiseSpeed {
+		t.Fatalf("rise speed = %v, want %v", got, -maximumRiseSpeed)
 	}
 }

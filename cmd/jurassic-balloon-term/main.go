@@ -8,11 +8,11 @@ import (
 	"os"
 
 	"github.com/gdamore/jurassic-balloon-term/internal/ui"
-	"github.com/gdamore/tcell/v2"
+	"github.com/gdamore/tcell/v3"
 )
 
 func main() {
-	screen, err := tcell.NewScreen()
+	screen, err := tcell.NewScreen(tcell.OptAdvancedKeys(true))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "create terminal screen: %v\n", err)
 		os.Exit(1)

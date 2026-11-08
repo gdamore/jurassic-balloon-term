@@ -71,6 +71,20 @@ func TestCollisionIgnoresTransparentCells(t *testing.T) {
 	}
 }
 
+func TestCollisionIgnoresNonCollidableSprite(t *testing.T) {
+	a := New("balloon")
+	b := New("cloud")
+	mustFrame(t, a, "on", FrameFromStrings("X"))
+	mustFrame(t, b, "on", FrameFromStrings("X"))
+	_ = a.SetFrame("on")
+	_ = b.SetFrame("on")
+	b.SetCollidable(false)
+
+	if _, collided := Collide(a, b); collided {
+		t.Fatal("non-collidable scenery reported a collision")
+	}
+}
+
 func TestSceneOrdersLayersAndReportsOneCollisionPerPair(t *testing.T) {
 	scene := NewScene()
 	low := New("low")

@@ -7,15 +7,25 @@ import (
 	"time"
 
 	"github.com/gdamore/jurassic-balloon-term/internal/game"
-	"github.com/gdamore/tcell/v2"
+	"github.com/gdamore/tcell/v3"
 )
 
 const updateStep = 33 * time.Millisecond
+const burnerPulse = 200 * time.Millisecond
 
 // App coordinates terminal events, fixed simulation updates, and rendering.
 type App struct {
-	screen tcell.Screen
-	model  *game.Model
+	screen      tcell.Screen
+	model       *game.Model
+	keyRelease  bool
+	burnerKeys  map[burnerKey]struct{}
+	burnerUntil time.Time
+}
+
+type burnerKey struct {
+	key      tcell.Key
+	physical tcell.Key
+	str      string
 }
 
 func New(screen tcell.Screen) *App {
@@ -32,11 +42,11 @@ func (a *App) Run() error {
 	a.screen.HideCursor()
 	width, height := a.screen.Size()
 	a.model = game.NewModel(width, height)
+	protocol := a.screen.KeyboardProtocol()
+	a.keyRelease = supportsKeyRelease(protocol)
+	a.burnerKeys = make(map[burnerKey]struct{})
 
-	events := make(chan tcell.Event, 16)
-	stopEvents := make(chan struct{})
-	defer close(stopEvents)
-	go a.screen.ChannelEvents(events, stopEvents)
+	events := a.screen.EventQ()
 
 	ticker := time.NewTicker(updateStep)
 	defer ticker.Stop()
@@ -54,10 +64,17 @@ func (a *App) Run() error {
 			}
 			a.draw()
 		case <-ticker.C:
+			if !a.keyRelease && a.model.BurnerOn() && time.Now().After(a.burnerUntil) {
+				a.model.SetBurner(false)
+			}
 			a.model.Update(updateStep)
 			a.draw()
 		}
 	}
+}
+
+func supportsKeyRelease(protocol tcell.KeyProtocol) bool {
+	return protocol == tcell.KittyKeyboard || protocol == tcell.Win32Keyboard
 }
 
 func (a *App) handleEvent(event tcell.Event) bool {
@@ -67,33 +84,81 @@ func (a *App) handleEvent(event tcell.Event) bool {
 		a.model.Resize(width, height)
 		a.screen.Sync()
 	case *tcell.EventKey:
+		if event.Pressed() && isQuitEvent(event) {
+			return true
+		}
+		if a.model.Popped() {
+			if event.Pressed() && isRetryEvent(event) {
+				width, height := a.screen.Size()
+				a.model = game.NewModel(width, height)
+				a.burnerKeys = make(map[burnerKey]struct{})
+				a.burnerUntil = time.Time{}
+			}
+			return false
+		}
+		if isBurnerEvent(event) {
+			a.handleBurnerEvent(event)
+			return false
+		}
+		if !event.Pressed() {
+			return false
+		}
 		switch event.Key() {
 		case tcell.KeyEscape:
 			return true
-		case tcell.KeyUp:
-			a.model.Move(0, -1)
-		case tcell.KeyDown:
-			a.model.Move(0, 1)
-		case tcell.KeyLeft:
-			a.model.Move(-1, 0)
-		case tcell.KeyRight:
-			a.model.Move(1, 0)
 		case tcell.KeyRune:
-			switch event.Rune() {
-			case 'q', 'Q':
+			switch event.Str() {
+			case "q", "Q":
 				return true
-			case 'w', 'W':
-				a.model.Move(0, -1)
-			case 's', 'S':
-				a.model.Move(0, 1)
-			case 'a', 'A':
-				a.model.Move(-1, 0)
-			case 'd', 'D':
-				a.model.Move(1, 0)
-			case ' ':
+			case "p", "P":
 				a.model.TogglePause()
 			}
 		}
 	}
 	return false
+}
+
+func isQuitEvent(event *tcell.EventKey) bool {
+	if event.Key() == tcell.KeyEscape {
+		return true
+	}
+	return event.Key() == tcell.KeyRune && (event.Str() == "q" || event.Str() == "Q")
+}
+
+func isRetryEvent(event *tcell.EventKey) bool {
+	if event.Key() == tcell.KeyEnter {
+		return true
+	}
+	if event.Key() != tcell.KeyRune {
+		return false
+	}
+	return event.Str() == " " || event.Str() == "r" || event.Str() == "R"
+}
+
+func isBurnerEvent(event *tcell.EventKey) bool {
+	if event.Key() == tcell.KeyUp {
+		return true
+	}
+	if event.Key() != tcell.KeyRune {
+		return false
+	}
+	return event.Str() == " " || event.Str() == "w" || event.Str() == "W"
+}
+
+func (a *App) handleBurnerEvent(event *tcell.EventKey) {
+	if !a.keyRelease {
+		if event.Pressed() {
+			a.model.SetBurner(true)
+			a.burnerUntil = time.Now().Add(burnerPulse)
+		}
+		return
+	}
+
+	key := burnerKey{key: event.Key(), physical: event.Physical(), str: event.Str()}
+	if event.Pressed() {
+		a.burnerKeys[key] = struct{}{}
+	} else {
+		delete(a.burnerKeys, key)
+	}
+	a.model.SetBurner(len(a.burnerKeys) != 0)
 }

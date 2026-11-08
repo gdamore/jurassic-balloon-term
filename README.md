@@ -15,8 +15,11 @@ layering, transparent cells, and cell-accurate collision detection.
 go run ./cmd/jurassic-balloon-term
 ```
 
-Use the arrow keys or `WASD` to move the balloon. Press `Space` to pause and
-`Q` or `Esc` to quit.
+Hold `Space`, `Up`, or `W` to fire the burner. Press `P` to pause and `Q` or
+`Esc` to quit. Tcell v3 uses true press/release events with Kitty and Win32
+keyboard protocols; legacy protocols fall back to repeated presses with a
+short grace period. Storm clouds telegraph lightning with rain; touching a
+visible bolt pops the balloon. Press `Space`, `R`, or `Enter` to retry.
 
 ## Development
 

@@ -30,10 +30,11 @@ type Sprite struct {
 	origin       Point
 	vx, vy       float64
 	layer        int
+	collidable   bool
 }
 
 func New(name string) *Sprite {
-	return &Sprite{name: name, frames: make(map[string]Frame)}
+	return &Sprite{name: name, frames: make(map[string]Frame), collidable: true}
 }
 
 func (s *Sprite) Name() string { return s.name }
@@ -105,6 +106,12 @@ func (s *Sprite) Velocity() (float64, float64) { return s.vx, s.vy }
 func (s *Sprite) SetLayer(layer int) { s.layer = layer }
 
 func (s *Sprite) Layer() int { return s.layer }
+
+// SetCollidable controls whether the sprite participates in collision tests.
+// Decorative sprites remain visible and animated when collision is disabled.
+func (s *Sprite) SetCollidable(collidable bool) { s.collidable = collidable }
+
+func (s *Sprite) Collidable() bool { return s.collidable }
 
 // Update advances movement and animation by an explicit simulation step.
 func (s *Sprite) Update(step time.Duration) {
