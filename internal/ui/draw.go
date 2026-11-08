@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gdamore/jurassic-balloon-term/internal/buildinfo"
 	"github.com/gdamore/jurassic-balloon-term/internal/game"
 	"github.com/gdamore/jurassic-balloon-term/internal/sprite"
 	"github.com/gdamore/tcell/v3"
@@ -324,7 +325,7 @@ func (a *App) drawStartScreen(width, height int) {
 		style tcell.Style
 	}{
 		{"JURASSIC BALLOON", titleStyle},
-		{"", textStyle},
+		{"v" + buildinfo.Version, blurbStyle},
 		{"", artStyle},
 		{"", artStyle},
 		{"", artStyle},
@@ -367,6 +368,7 @@ func (a *App) drawCreditsScreen(width, height int) {
 		{"CREDITS", titleStyle},
 		{"", textStyle},
 		{"JURASSIC BALLOON", headingStyle},
+		{"Version " + buildinfo.Version, dimStyle},
 		{"Created, designed, and programmed by", textStyle},
 		{"Garrett D'Amore", titleStyle},
 		{"", textStyle},
