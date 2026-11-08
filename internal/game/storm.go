@@ -125,17 +125,20 @@ func styledFrame(style int, rows ...string) sprite.Frame {
 	return frame
 }
 
-func (s *stormHazard) updatePhase(step time.Duration) {
+func (s *stormHazard) updatePhase(step time.Duration) bool {
+	struck := false
 	s.phaseElapsed += step
 	for range len(stormPhaseDurations) {
 		duration := stormPhaseDurations[s.phase]
 		if s.phaseElapsed < duration {
-			return
+			return struck
 		}
 		s.phaseElapsed -= duration
 		s.phase = (s.phase + 1) % stormPhase(len(stormPhaseDurations))
+		struck = struck || s.phase == stormStrike
 		s.applyPhase()
 	}
+	return struck
 }
 
 func (s *stormHazard) applyPhase() {

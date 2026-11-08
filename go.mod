@@ -2,12 +2,19 @@ module github.com/gdamore/jurassic-balloon-term
 
 go 1.26.0
 
-require github.com/gdamore/tcell/v3 v3.6.0
+require (
+	github.com/ebitengine/oto/v3 v3.5.1
+	github.com/gdamore/tcell/v3 v3.6.0
+	github.com/jfreymuth/oggvorbis v1.0.5
+)
 
 require (
 	github.com/clipperhouse/displaywidth v0.11.0 // indirect
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
+	github.com/ebitengine/purego v0.11.0 // indirect
 	github.com/gdamore/encoding v1.0.1 // indirect
+	github.com/jfreymuth/pulse v0.1.3 // indirect
+	github.com/jfreymuth/vorbis v1.0.2 // indirect
 	github.com/lucasb-eyer/go-colorful v1.4.1 // indirect
 	golang.org/x/sys v0.48.0 // indirect
 	golang.org/x/term v0.46.0 // indirect

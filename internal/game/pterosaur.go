@@ -114,11 +114,13 @@ func paintPterosaur(frame *sprite.Frame, style, y, x0, x1 int) {
 	}
 }
 
-func (p *pterosaurHazard) updatePath(step time.Duration) {
+func (p *pterosaurHazard) updatePath(step time.Duration) bool {
+	lunged := false
 	frame := p.sprite.FrameName()
 	if p.lastFrame == "down" && frame == "glide" {
 		p.boostTime = pterosaurBoostTime
 		_, p.lungeY = p.sprite.Position()
+		lunged = true
 	}
 	p.lastFrame = frame
 	if p.boostTime > 0 {
@@ -128,7 +130,7 @@ func (p *pterosaurHazard) updatePath(step time.Duration) {
 		p.sprite.SetVelocity(velocity, 0)
 		x, _ := p.sprite.Position()
 		p.sprite.SetPosition(x, p.lungeY)
-		return
+		return lunged
 	}
 	p.sprite.SetVelocity(pterosaurSpeed, 0)
 
@@ -136,6 +138,7 @@ func (p *pterosaurHazard) updatePath(step time.Duration) {
 	x, _ := p.sprite.Position()
 	angle := 2 * math.Pi * float64(p.phase) / float64(pterosaurBobPeriod)
 	p.sprite.SetPosition(x, p.baseY+math.Sin(angle)*pterosaurBobHeight)
+	return lunged
 }
 
 func (p *pterosaurHazard) setBaseY(baseY float64) {

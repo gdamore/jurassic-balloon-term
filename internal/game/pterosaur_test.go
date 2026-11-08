@@ -119,6 +119,30 @@ func TestPterosaurCollisionPopsBalloon(t *testing.T) {
 	if !m.Popped() {
 		t.Fatal("pterosaur contact did not pop balloon")
 	}
+	if events := m.Events(); len(events) != 1 || events[0] != EventBalloonPopped {
+		t.Fatalf("collision events = %v, want balloon pop", events)
+	}
+}
+
+func TestPterosaurLungeProducesGameEvent(t *testing.T) {
+	m := NewModel(80, 30)
+	m.pterosaur.lastFrame = "down"
+	m.pterosaur.sprite.SetPosition(40, 6)
+	if err := m.pterosaur.sprite.SetFrame("glide"); err != nil {
+		t.Fatal(err)
+	}
+
+	m.Update(time.Millisecond)
+	if events := m.Events(); len(events) != 1 || events[0] != EventPterosaurLunged {
+		t.Fatalf("lunge events = %v, want pterosaur lunge", events)
+	}
+
+	m.pterosaur.lastFrame = "down"
+	m.pterosaur.sprite.SetPosition(float64(m.Width+1), 6)
+	m.Update(time.Millisecond)
+	if events := m.Events(); len(events) != 0 {
+		t.Fatalf("offscreen lunge events = %v, want none", events)
+	}
 }
 
 func TestDepartedPterosaurIsReplaced(t *testing.T) {

@@ -35,6 +35,35 @@ func TestStormTelegraphsBeforeStrike(t *testing.T) {
 	}
 }
 
+func TestVisibleLightningStrikeProducesGameEvent(t *testing.T) {
+	m := NewModel(80, 24)
+	m.storm.setPosition(50, 0)
+
+	m.storm.phaseElapsed = stormPhaseDurations[stormGather] - time.Millisecond
+	m.Update(time.Millisecond)
+	if events := m.Events(); len(events) != 0 {
+		t.Fatalf("rain telegraph events = %v, want none", events)
+	}
+	m.storm.phaseElapsed = stormPhaseDurations[stormRain] - time.Millisecond
+	m.Update(time.Millisecond)
+	if events := m.Events(); len(events) != 1 || events[0] != EventLightningStruck {
+		t.Fatalf("strike events = %v, want lightning strike", events)
+	}
+}
+
+func TestOffscreenLightningStrikeIsSilent(t *testing.T) {
+	m := NewModel(80, 24)
+	m.storm.setPosition(float64(m.Width+20), 0)
+
+	m.storm.phase = stormRain
+	m.storm.phaseElapsed = stormPhaseDurations[stormRain] - time.Millisecond
+	m.storm.applyPhase()
+	m.Update(time.Millisecond)
+	if events := m.Events(); len(events) != 0 {
+		t.Fatalf("offscreen strike events = %v, want none", events)
+	}
+}
+
 func TestLightningHasCompactFootprint(t *testing.T) {
 	m := NewModel(80, 24)
 	frame, ok := m.storm.bolt.ActiveFrame()

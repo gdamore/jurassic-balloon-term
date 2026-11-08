@@ -17,6 +17,7 @@ const burnerPulse = 200 * time.Millisecond
 type App struct {
 	screen      tcell.Screen
 	model       *game.Model
+	sound       Sound
 	keyRelease  bool
 	burnerKeys  map[burnerKey]struct{}
 	burnerUntil time.Time
@@ -28,8 +29,12 @@ type burnerKey struct {
 	str      string
 }
 
-func New(screen tcell.Screen) *App {
-	return &App{screen: screen}
+func New(screen tcell.Screen, sounds ...Sound) *App {
+	app := &App{screen: screen}
+	if len(sounds) != 0 {
+		app.sound = sounds[0]
+	}
+	return app
 }
 
 func (a *App) Run() error {
@@ -42,6 +47,9 @@ func (a *App) Run() error {
 	a.screen.HideCursor()
 	width, height := a.screen.Size()
 	a.model = game.NewModel(width, height)
+	if a.sound != nil {
+		a.sound.Start()
+	}
 	protocol := a.screen.KeyboardProtocol()
 	a.keyRelease = supportsKeyRelease(protocol)
 	a.burnerKeys = make(map[burnerKey]struct{})
@@ -65,9 +73,10 @@ func (a *App) Run() error {
 			a.draw()
 		case <-ticker.C:
 			if !a.keyRelease && a.model.BurnerOn() && time.Now().After(a.burnerUntil) {
-				a.model.SetBurner(false)
+				a.setBurner(false)
 			}
 			a.model.Update(updateStep)
+			a.handleGameEvents()
 			a.draw()
 		}
 	}
@@ -93,6 +102,9 @@ func (a *App) handleEvent(event tcell.Event) bool {
 				a.model = game.NewModel(width, height)
 				a.burnerKeys = make(map[burnerKey]struct{})
 				a.burnerUntil = time.Time{}
+				if a.sound != nil {
+					a.sound.Retry()
+				}
 			}
 			return false
 		}
@@ -112,6 +124,9 @@ func (a *App) handleEvent(event tcell.Event) bool {
 				return true
 			case "p", "P":
 				a.model.TogglePause()
+				if a.sound != nil {
+					a.sound.SetPaused(a.model.Paused)
+				}
 			}
 		}
 	}
@@ -148,7 +163,7 @@ func isBurnerEvent(event *tcell.EventKey) bool {
 func (a *App) handleBurnerEvent(event *tcell.EventKey) {
 	if !a.keyRelease {
 		if event.Pressed() {
-			a.model.SetBurner(true)
+			a.setBurner(true)
 			a.burnerUntil = time.Now().Add(burnerPulse)
 		}
 		return
@@ -160,5 +175,39 @@ func (a *App) handleBurnerEvent(event *tcell.EventKey) {
 	} else {
 		delete(a.burnerKeys, key)
 	}
-	a.model.SetBurner(len(a.burnerKeys) != 0)
+	a.setBurner(len(a.burnerKeys) != 0)
+}
+
+func (a *App) setBurner(enabled bool) {
+	if a.model.BurnerOn() == enabled {
+		return
+	}
+	a.model.SetBurner(enabled)
+	if a.sound != nil {
+		a.sound.SetBurner(enabled)
+	}
+}
+
+func (a *App) handleGameEvents() {
+	if a.sound == nil {
+		return
+	}
+	for _, event := range a.model.Events() {
+		a.handleGameEvent(event)
+	}
+}
+
+func (a *App) handleGameEvent(event game.Event) {
+	if a.sound == nil {
+		return
+	}
+	switch event {
+	case game.EventBalloonPopped:
+		a.sound.SetBurner(false)
+		a.sound.BalloonPopped()
+	case game.EventPterosaurLunged:
+		a.sound.PterosaurLunged()
+	case game.EventLightningStruck:
+		a.sound.LightningStruck()
+	}
 }

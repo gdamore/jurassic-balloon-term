@@ -132,3 +132,37 @@ func TestLegacyBurnerInputStartsPulse(t *testing.T) {
 		t.Fatal("legacy key press did not set pulse deadline")
 	}
 }
+
+type recordingSound struct {
+	burner     []bool
+	pops       int
+	pterosaurs int
+	lightning  int
+}
+
+func (*recordingSound) Start()              {}
+func (s *recordingSound) SetBurner(on bool) { s.burner = append(s.burner, on) }
+func (s *recordingSound) BalloonPopped()    { s.pops++ }
+func (s *recordingSound) PterosaurLunged()  { s.pterosaurs++ }
+func (s *recordingSound) LightningStruck()  { s.lightning++ }
+func (*recordingSound) Retry()              {}
+func (*recordingSound) SetPaused(bool)      {}
+
+func TestSoundTracksBurnerAndGameEvents(t *testing.T) {
+	sound := &recordingSound{}
+	a := &App{model: game.NewModel(80, 24), sound: sound}
+
+	a.setBurner(true)
+	a.setBurner(true)
+	a.setBurner(false)
+	a.handleGameEvent(game.EventPterosaurLunged)
+	a.handleGameEvent(game.EventLightningStruck)
+	a.handleGameEvent(game.EventBalloonPopped)
+
+	if len(sound.burner) != 3 || !sound.burner[0] || sound.burner[1] || sound.burner[2] {
+		t.Fatalf("burner sound changes = %v, want [true false false]", sound.burner)
+	}
+	if sound.pterosaurs != 1 || sound.lightning != 1 || sound.pops != 1 {
+		t.Fatalf("cue counts = pterosaur:%d lightning:%d pop:%d, want 1 each", sound.pterosaurs, sound.lightning, sound.pops)
+	}
+}

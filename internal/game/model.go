@@ -91,6 +91,7 @@ type Model struct {
 	popped    bool
 	stopped   bool
 	popTime   time.Duration
+	events    []Event
 }
 
 // NewModel creates a model centered in the supplied play field.
@@ -425,6 +426,7 @@ func (m *Model) TogglePause() { m.Paused = !m.Paused }
 // Update advances the deterministic simulation by one fixed step and returns
 // any collisions detected after movement.
 func (m *Model) Update(step time.Duration) []sprite.Collision {
+	m.events = m.events[:0]
 	if m.Paused || step <= 0 {
 		return nil
 	}
@@ -443,8 +445,19 @@ func (m *Model) Update(step time.Duration) []sprite.Collision {
 		return nil
 	}
 	m.Elapsed += step
-	m.storm.updatePhase(step)
-	m.pterosaur.updatePath(step)
+	if m.storm.updatePhase(step) {
+		x, _ := m.storm.bolt.Position()
+		if frame, visible := m.storm.bolt.ActiveFrame(); visible && x < float64(m.Width) && x+float64(frame.Width) > 0 {
+			m.events = append(m.events, EventLightningStruck)
+		}
+	}
+	if m.pterosaur.updatePath(step) {
+		x, _ := m.pterosaur.sprite.Position()
+		frame, _ := m.pterosaur.sprite.ActiveFrame()
+		if x < float64(m.Width) && x+float64(frame.Width) > 0 {
+			m.events = append(m.events, EventPterosaurLunged)
+		}
+	}
 	dt := step.Seconds()
 	if m.burner {
 		m.heat += (1 - m.heat) * (1 - math.Exp(-dt/heatResponse.Seconds()))
@@ -515,6 +528,7 @@ func (m *Model) popBalloon() {
 		return
 	}
 	m.popped = true
+	m.events = append(m.events, EventBalloonPopped)
 	m.burner = false
 	m.vy = 0
 	m.balloon.SetVelocity(0, 0)
