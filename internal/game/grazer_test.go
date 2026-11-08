@@ -28,6 +28,16 @@ func TestFirstTwoStagesHaveGrazerPairs(t *testing.T) {
 	}
 }
 
+func TestThunderheadPassHasOneGrazerPairAroundMidstageLull(t *testing.T) {
+	m := NewStageModel(80, 24, 2)
+	if len(m.grazers) != 2 {
+		t.Fatalf("Thunderhead Pass grazer count = %d, want one pair", len(m.grazers))
+	}
+	if first, second := m.grazers[0].distance, m.grazers[1].distance; first < 300 || first > 310 || second < 315 || second > 325 {
+		t.Fatalf("Thunderhead Pass grazer distances = %v, %v; want pair around 318", first, second)
+	}
+}
+
 func TestGrazerArtworkIsCompactAndShaded(t *testing.T) {
 	grazer := newGrazer(0, 20)
 	frame, _ := grazer.sprite.ActiveFrame()

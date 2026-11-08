@@ -42,6 +42,10 @@ const (
 	StyleStormCloudShadow
 	StyleRain
 	StyleLightning
+	StyleLightningWarning
+	StyleLightningFade
+	StyleLightningDim
+	StyleGroundStrike
 	StylePop
 	StyleFarTerrain
 	StyleGroundSurface
@@ -108,37 +112,38 @@ type Model struct {
 	Paused  bool
 	Elapsed time.Duration
 
-	scene       *sprite.Scene
-	balloon     *sprite.Sprite
-	clouds      []cloudTrack
-	storm       *stormHazard
-	storms      []*stormHazard
-	rain        *sprite.Sprite
-	ceiling     *ceilingStorm
-	pterosaur   *pterosaurHazard
-	redEye      *pterosaurHazard
-	finish      *sprite.Sprite
-	trees       []treeTrack
-	ferns       []fernTrack
-	grazers     []grazerTrack
-	terrain     []*terrainLayer
-	random      *rand.Rand
-	cloudID     int
-	burner      bool
-	heat        float64
-	vy          float64
-	popped      bool
-	stopped     bool
-	popTime     time.Duration
-	events      []Event
-	stage       Stage
-	stageIndex  int
-	distance    float64
-	completed   bool
-	grounded    bool
-	scrollSpeed float64
-	transition  *stageTransition
-	departing   []*sprite.Sprite
+	scene        *sprite.Scene
+	balloon      *sprite.Sprite
+	clouds       []cloudTrack
+	storm        *stormHazard
+	storms       []*stormHazard
+	groundStorms []*groundStormHazard
+	rain         *sprite.Sprite
+	ceiling      *ceilingStorm
+	pterosaur    *pterosaurHazard
+	redEye       *pterosaurHazard
+	finish       *sprite.Sprite
+	trees        []treeTrack
+	ferns        []fernTrack
+	grazers      []grazerTrack
+	terrain      []*terrainLayer
+	random       *rand.Rand
+	cloudID      int
+	burner       bool
+	heat         float64
+	vy           float64
+	popped       bool
+	stopped      bool
+	popTime      time.Duration
+	events       []Event
+	stage        Stage
+	stageIndex   int
+	distance     float64
+	completed    bool
+	grounded     bool
+	scrollSpeed  float64
+	transition   *stageTransition
+	departing    []*sprite.Sprite
 }
 
 // NewModel creates a model centered in the supplied play field.
@@ -173,6 +178,7 @@ func NewStageModel(width, height, stageIndex int) *Model {
 	}
 	m.spawnStorm(m.stormStartX(0))
 	m.addStormFronts()
+	m.addGroundStorms()
 	if m.stage.Pterosaurs {
 		m.spawnPterosaur(float64(m.Width + 35))
 		if stageIndex >= 1 {
@@ -438,6 +444,56 @@ func (m *Model) addStormFronts() {
 	}
 }
 
+func (m *Model) addGroundStorms() {
+	for index := range m.stage.GroundStorms {
+		yFraction := 0.08 + 0.70*m.random.Float64()
+		x := float64(m.Width+30) + float64(index)*max(float64(m.Width)*0.85, 70)
+		storm := newGroundStormHazard(x, m.groundStormY(yFraction), yFraction, m.Height)
+		storm.setSpeed(stormSpeed * m.stage.ScrollSpeed / worldScrollSpeed)
+		m.groundStorms = append(m.groundStorms, storm)
+		m.scene.Add(storm.cloud)
+		m.scene.Add(storm.bolt)
+		m.scene.Add(storm.impact)
+	}
+	m.clipGroundStormsToTerrain()
+}
+
+func (m *Model) groundStormY(fraction float64) float64 {
+	minimum := float64(m.Height) / 2
+	maximum := float64(max(m.Height-groundStormCloudHeight-4, int(minimum)))
+	return minimum + (maximum-minimum)*fraction
+}
+
+func (m *Model) rebuildGroundStorm(index int) {
+	old := m.groundStorms[index]
+	x, _ := old.cloud.Position()
+	m.scene.Remove(old.cloud)
+	m.scene.Remove(old.bolt)
+	m.scene.Remove(old.impact)
+	storm := newGroundStormHazard(x, m.groundStormY(old.yFraction), old.yFraction, m.Height)
+	storm.phase = old.phase
+	storm.applyPhase()
+	storm.setSpeed(stormSpeed * m.scrollSpeed / worldScrollSpeed)
+	m.groundStorms[index] = storm
+	m.scene.Add(storm.cloud)
+	m.scene.Add(storm.bolt)
+	m.scene.Add(storm.impact)
+}
+
+func (m *Model) clipGroundStormsToTerrain() {
+	if len(m.terrain) == 0 {
+		return
+	}
+	foreground := m.terrain[len(m.terrain)-1]
+	for _, storm := range m.groundStorms {
+		boltX, _ := storm.bolt.Position()
+		surfaceY, found := foreground.surfaceYAt(int(math.Floor(boltX)) + groundStormBoltWidth/2)
+		if found {
+			storm.setTerrainY(surfaceY)
+		}
+	}
+}
+
 func (m *Model) setStormSpeed(storm *stormHazard) {
 	speed := stormSpeed * m.stage.ScrollSpeed / worldScrollSpeed
 	storm.cloud.SetVelocity(speed, 0)
@@ -661,6 +717,10 @@ func (m *Model) Resize(width, height int) {
 	for _, terrain := range m.terrain {
 		terrain.resize(m.Height)
 	}
+	for index := range m.groundStorms {
+		m.rebuildGroundStorm(index)
+	}
+	m.clipGroundStormsToTerrain()
 	for index := range m.ferns {
 		m.positionFern(&m.ferns[index])
 	}
@@ -782,11 +842,21 @@ func (m *Model) Update(step time.Duration) []sprite.Collision {
 	m.Elapsed += step
 	m.updateStageTransition(step)
 	m.distance = min(m.distance+m.scrollSpeed*step.Seconds(), m.stage.GoalDistance)
+	m.clipGroundStormsToTerrain()
 	for _, storm := range m.storms {
 		if storm.updatePhase(step) {
 			x, _ := storm.bolt.Position()
 			if frame, visible := storm.bolt.ActiveFrame(); visible && x < float64(m.Width) && x+float64(frame.Width) > 0 {
 				m.events = append(m.events, EventLightningStruck)
+			}
+		}
+	}
+	balloonFrame, balloonVisible := m.balloon.ActiveFrame()
+	balloonX, _ := m.balloon.Position()
+	if balloonVisible {
+		for _, storm := range m.groundStorms {
+			if storm.updateForApproach(balloonX + float64(balloonFrame.Width)) {
+				m.events = append(m.events, EventGroundLightningStruck)
 			}
 		}
 	}
@@ -812,7 +882,7 @@ func (m *Model) Update(step time.Duration) []sprite.Collision {
 	m.anchorGrazers()
 	for _, collision := range collisions {
 		other, hitsBalloon := collisionWith(m.balloon, collision)
-		if hitsBalloon && (m.isLightningHazard(other) || m.isCeilingHazard(other) || m.isPterosaurHazard(other) || m.isGroundHazard(other)) {
+		if hitsBalloon && (m.isLightningHazard(other) || m.isGroundStormHazard(other) || m.isCeilingHazard(other) || m.isPterosaurHazard(other) || m.isGroundHazard(other)) {
 			m.popBalloon()
 			break
 		}
@@ -839,6 +909,19 @@ func (m *Model) Update(step time.Duration) []sprite.Collision {
 			gap := 30 + m.random.Intn(40)
 			m.resetStorm(storm, float64(m.Width+gap))
 		}
+	}
+	for _, storm := range m.groundStorms {
+		stormX, _ := storm.cloud.Position()
+		if stormX+groundStormCloudWidth >= 0 {
+			continue
+		}
+		farthest := float64(m.Width + 30)
+		for _, other := range m.groundStorms {
+			x, _ := other.cloud.Position()
+			farthest = max(farthest, x)
+		}
+		storm.yFraction = 0.08 + 0.70*m.random.Float64()
+		storm.reset(farthest+max(float64(m.Width)*0.85, 70), m.groundStormY(storm.yFraction))
 	}
 	if m.pterosaur != nil {
 		pterosaurX, _ := m.pterosaur.sprite.Position()
@@ -894,6 +977,15 @@ func (m *Model) isLightningHazard(candidate *sprite.Sprite) bool {
 	return false
 }
 
+func (m *Model) isGroundStormHazard(candidate *sprite.Sprite) bool {
+	for _, storm := range m.groundStorms {
+		if storm.bolt == candidate {
+			return true
+		}
+	}
+	return false
+}
+
 func (m *Model) isCeilingHazard(candidate *sprite.Sprite) bool {
 	return m.ceiling != nil && (candidate == m.ceiling.cloud || candidate == m.ceiling.bolt)
 }
@@ -930,6 +1022,10 @@ func (m *Model) popBalloon() {
 	for _, storm := range m.storms {
 		storm.bolt.Hide()
 	}
+	for _, storm := range m.groundStorms {
+		storm.bolt.Hide()
+		storm.impact.Hide()
+	}
 	if m.ceiling != nil {
 		m.ceiling.bolt.Hide()
 	}
@@ -948,6 +1044,10 @@ func (m *Model) completeStage() {
 		m.finish.SetVelocity(0, 0)
 		for _, storm := range m.storms {
 			storm.bolt.Hide()
+		}
+		for _, storm := range m.groundStorms {
+			storm.bolt.Hide()
+			storm.impact.Hide()
 		}
 		if m.ceiling != nil {
 			m.ceiling.bolt.Hide()

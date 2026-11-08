@@ -46,7 +46,11 @@ func (a *App) draw() {
 	stormCloudHighlightStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(86, 91, 108)).Bold(true)
 	stormCloudShadowStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(35, 40, 55)).Bold(true)
 	rainStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(135, 203, 224))
-	lightningStyle := tcell.StyleDefault.Foreground(tcell.ColorYellow).Bold(true)
+	lightningStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(255, 255, 32)).Bold(true)
+	lightningWarningStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(255, 255, 255)).Bold(true)
+	lightningFadeStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(170, 235, 255)).Bold(true)
+	lightningDimStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(65, 145, 255)).Bold(true)
+	groundStrikeStyle := tcell.StyleDefault.Foreground(tcell.ColorWhite).Background(tcell.ColorOrangeRed).Bold(true)
 	popStyle := tcell.StyleDefault.Foreground(tcell.ColorOrangeRed).Bold(true)
 	farTerrainStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(43, 85, 96))
 	groundSurfaceStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(91, 133, 72))
@@ -116,6 +120,10 @@ func (a *App) draw() {
 		game.StyleStormCloudShadow:             stormCloudShadowStyle,
 		game.StyleRain:                         rainStyle,
 		game.StyleLightning:                    lightningStyle,
+		game.StyleLightningWarning:             lightningWarningStyle,
+		game.StyleLightningFade:                lightningFadeStyle,
+		game.StyleLightningDim:                 lightningDimStyle,
+		game.StyleGroundStrike:                 groundStrikeStyle,
 		game.StylePop:                          popStyle,
 		game.StyleFarTerrain:                   farTerrainStyle,
 		game.StyleGroundSurface:                groundSurfaceStyle,
@@ -273,10 +281,8 @@ func drawSprites(screen tcell.Screen, sprites []*sprite.Sprite, palette map[int]
 				}
 				if style.GetBackground() == color.Default {
 					background := skyColor(bounds.Min.Y+y, height)
-					if isPartialBlock(cell.Rune) {
-						existing, existingStyle, _ := screen.Get(bounds.Min.X+x, bounds.Min.Y+y)
-						background = underlyingColor(existing, existingStyle, background)
-					}
+					existing, existingStyle, _ := screen.Get(bounds.Min.X+x, bounds.Min.Y+y)
+					background = underlyingColor(existing, existingStyle, background)
 					style = style.Background(background)
 				}
 				screen.SetContent(bounds.Min.X+x, bounds.Min.Y+y, cell.Rune, nil, style)

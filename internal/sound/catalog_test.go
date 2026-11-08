@@ -16,6 +16,22 @@ func TestCatalogValid(t *testing.T) {
 	}
 }
 
+func TestGroundStrikeUsesDedicatedRecordedCue(t *testing.T) {
+	catalog := Catalog()
+	id := catalog.Cues[audio.CueGroundLightningStrike]
+	if id != soundGroundStrike {
+		t.Fatalf("ground strike cue = %q, want %q", id, soundGroundStrike)
+	}
+	sound := catalog.Sounds[id]
+	if len(sound.Variants) != 1 || sound.MaxVoices != 1 || sound.Cooldown < time.Second {
+		t.Fatalf("ground strike mix = variants:%d voices:%d cooldown:%v", len(sound.Variants), sound.MaxVoices, sound.Cooldown)
+	}
+	duration := time.Duration(len(sound.Variants[0].PCM)/audio.DefaultChannels) * time.Second / audio.DefaultSampleRate
+	if duration < 2*time.Second || duration > 3*time.Second {
+		t.Fatalf("ground strike duration = %v, want focused 2–3 second transient", duration)
+	}
+}
+
 func TestPterosaurCallIsShortCrowLikeCue(t *testing.T) {
 	sound := Catalog().Sounds[soundPterosaur]
 	if sound.Gain < 0.7 || sound.MaxVoices != 1 || sound.Cooldown < 400*time.Millisecond {
@@ -51,7 +67,8 @@ func TestCrowSquawkIsDeterministicAndDecays(t *testing.T) {
 }
 
 func TestDayAmbienceUsesJungleBedWithoutCreatureEffects(t *testing.T) {
-	scene := Catalog().Ambience[audio.EnvironmentPrehistoricDay]
+	catalog := Catalog()
+	scene := catalog.Ambience[audio.EnvironmentPrehistoricDay]
 	if scene.Bed != soundJungle {
 		t.Fatalf("day ambience bed = %q, want %q", scene.Bed, soundJungle)
 	}
@@ -59,6 +76,9 @@ func TestDayAmbienceUsesJungleBedWithoutCreatureEffects(t *testing.T) {
 		if id == soundDinosaur1 || id == soundDinosaur2 || id == soundSauropod || id == soundPterosaurFar {
 			t.Fatalf("day ambience still schedules creature effect %q", id)
 		}
+	}
+	if gain := catalog.Sounds[soundJungle].Gain; gain > 0.20 {
+		t.Fatalf("jungle ambience gain = %v, want quiet background bed", gain)
 	}
 }
 

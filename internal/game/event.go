@@ -10,6 +10,7 @@ const (
 	EventBalloonPopped Event = iota
 	EventPterosaurLunged
 	EventLightningStruck
+	EventGroundLightningStruck
 	EventStageCompleted
 )
 

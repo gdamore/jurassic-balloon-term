@@ -294,6 +294,8 @@ func (a *App) handleGameEvent(event game.Event) {
 		a.sound.PterosaurLunged()
 	case game.EventLightningStruck:
 		a.sound.LightningStruck()
+	case game.EventGroundLightningStruck:
+		a.sound.GroundLightningStruck()
 	case game.EventStageCompleted:
 		if a.model.StageIndex()+1 >= game.StageCount() {
 			a.sound.SetBurner(false)

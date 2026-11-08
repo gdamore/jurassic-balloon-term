@@ -22,6 +22,7 @@ type Stage struct {
 	FernDistances   []float64
 	GrazerDistances []float64
 	StormFronts     int
+	GroundStorms    int
 	PersistentRain  bool
 	DarkCloudsOnly  bool
 	Pterosaurs      bool
@@ -43,12 +44,15 @@ var stages = []Stage{
 		),
 		0.10, 0.125, 0.43, 0.455, 0.76, 0.785,
 	),
-	withStorm(
-		withFerns(
-			withTrees(newStage("Thunderhead Pass", 3*time.Minute, time.Minute, 2*time.Minute), 0.12, 0.28, 0.44, 0.60, 0.76, 0.92),
-			0.05, 0.20, 0.36, 0.53, 0.69, 0.85,
+	withGrazers(
+		withStorm(
+			withFerns(
+				withTrees(newStage("Thunderhead Pass", 3*time.Minute, time.Minute, 2*time.Minute), 0.12, 0.28, 0.44, 0.60, 0.76, 0.92),
+				0.05, 0.20, 0.36, 0.53, 0.69, 0.85,
+			),
+			4,
 		),
-		4,
+		0.40, 0.425,
 	),
 	newStage("Long-Neck Grove", 210*time.Second, 70*time.Second, 140*time.Second),
 	newStage("Carnivore Country", 4*time.Minute, time.Minute, 2*time.Minute, 3*time.Minute),
@@ -57,6 +61,7 @@ var stages = []Stage{
 func withStorm(stage Stage, fronts int) Stage {
 	stage = withScrollSpeed(stage, stormScrollSpeed)
 	stage.StormFronts = max(fronts, 1)
+	stage.GroundStorms = 2
 	stage.PersistentRain = true
 	stage.DarkCloudsOnly = true
 	stage.Pterosaurs = false

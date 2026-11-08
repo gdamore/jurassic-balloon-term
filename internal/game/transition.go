@@ -44,6 +44,12 @@ func (m *Model) inheritWorld(previous *Model) {
 			m.scene.Add(storm.cloud)
 			m.departing = append(m.departing, storm.cloud)
 		}
+		for _, storm := range previous.groundStorms {
+			storm.bolt.Hide()
+			storm.impact.Hide()
+			m.scene.Add(storm.cloud)
+			m.departing = append(m.departing, storm.cloud)
+		}
 		for _, hazard := range []*pterosaurHazard{previous.pterosaur, previous.redEye} {
 			if hazard != nil {
 				m.scene.Add(hazard.sprite)
@@ -176,6 +182,9 @@ func (m *Model) applyScrollSpeed(speed float64) {
 		velocity := stormSpeed * speed / worldScrollSpeed
 		storm.cloud.SetVelocity(velocity, 0)
 		storm.bolt.SetVelocity(velocity, 0)
+	}
+	for _, storm := range m.groundStorms {
+		storm.setSpeed(stormSpeed * speed / worldScrollSpeed)
 	}
 }
 

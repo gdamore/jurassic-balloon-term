@@ -26,6 +26,7 @@ var decodedAssets = sync.OnceValue(func() map[string]audio.Clip {
 		"ambience_rain.ogg",
 		"effect_balloon_pop.ogg",
 		"effect_lightning_crack.ogg",
+		"effect_ground_strike.ogg",
 		"effect_thunder.ogg",
 		"effect_basket_1.ogg",
 		"effect_basket_2.ogg",

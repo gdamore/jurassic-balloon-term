@@ -77,6 +77,7 @@ const (
 	CueMenuConfirm
 	CueBasketCreak
 	CueLightningCrack
+	CueGroundLightningStrike
 )
 
 // Format describes the interleaved PCM stream delivered to a Backend.

@@ -1,7 +1,7 @@
 // Copyright 2026 Garrett D'Amore
 // Licensed under the Apache License, Version 2.0.
 
-// Package sound provides the game's embedded CC0 sound library.
+// Package sound provides the game's embedded, attribution-documented sound library.
 package sound
 
 import (
@@ -30,6 +30,7 @@ const (
 	soundPterosaur     audio.SoundID = "effect.pterosaur"
 	soundPterosaurFar  audio.SoundID = "ambience.pterosaur-distant"
 	soundLightning     audio.SoundID = "effect.lightning-crack"
+	soundGroundStrike  audio.SoundID = "effect.ground-lightning-strike"
 	soundThunderFar    audio.SoundID = "effect.thunder-distant"
 	soundThunder       audio.SoundID = "effect.thunder-near"
 	soundPickup        audio.SoundID = "effect.pickup"
@@ -60,7 +61,7 @@ func Catalog() audio.Catalog {
 			},
 			soundJungle: {
 				Variants: []audio.Clip{recorded("ambience_jungle.ogg")},
-				Bus:      audio.BusAmbience, Gain: 0.28, Loop: true,
+				Bus:      audio.BusAmbience, Gain: 0.20, Loop: true,
 			},
 			soundStorm: {
 				Variants: []audio.Clip{recorded("ambience_rain.ogg")},
@@ -122,6 +123,10 @@ func Catalog() audio.Catalog {
 				Variants: []audio.Clip{recorded("effect_lightning_crack.ogg")},
 				Bus:      audio.BusEffects, Gain: 0.95, MaxVoices: 2,
 			},
+			soundGroundStrike: {
+				Variants: []audio.Clip{recorded("effect_ground_strike.ogg")},
+				Bus:      audio.BusEffects, Gain: 1.0, MaxVoices: 1, Cooldown: time.Second,
+			},
 			soundThunderFar: {
 				Variants: []audio.Clip{recorded("effect_thunder.ogg")},
 				Bus:      audio.BusAmbience, Gain: 0.4, MaxVoices: 1, Cooldown: 2 * time.Second,
@@ -149,17 +154,18 @@ func Catalog() audio.Catalog {
 			audio.ContinuousBurner: soundBurner,
 		},
 		Cues: map[audio.Cue]audio.SoundID{
-			audio.CueBalloonPop:       soundPop,
-			audio.CuePterosaurCall:    soundPterosaur,
-			audio.CueDistantDinosaur:  soundDinosaur1,
-			audio.CueDistantSauropod:  soundSauropod,
-			audio.CueDistantCarnivore: soundCarnivore,
-			audio.CueThunderDistant:   soundThunderFar,
-			audio.CueThunderNear:      soundThunder,
-			audio.CuePickup:           soundPickup,
-			audio.CueMenuConfirm:      soundConfirm,
-			audio.CueBasketCreak:      soundBasket,
-			audio.CueLightningCrack:   soundLightning,
+			audio.CueBalloonPop:            soundPop,
+			audio.CuePterosaurCall:         soundPterosaur,
+			audio.CueDistantDinosaur:       soundDinosaur1,
+			audio.CueDistantSauropod:       soundSauropod,
+			audio.CueDistantCarnivore:      soundCarnivore,
+			audio.CueThunderDistant:        soundThunderFar,
+			audio.CueThunderNear:           soundThunder,
+			audio.CuePickup:                soundPickup,
+			audio.CueMenuConfirm:           soundConfirm,
+			audio.CueBasketCreak:           soundBasket,
+			audio.CueLightningCrack:        soundLightning,
+			audio.CueGroundLightningStrike: soundGroundStrike,
 		},
 		Ambience: map[audio.Environment]audio.Soundscape{
 			audio.EnvironmentPrehistoricDay: {

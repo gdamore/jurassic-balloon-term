@@ -164,4 +164,7 @@ func (s *Sprite) CellAt(x, y int) Cell {
 	return frame.CellAt(x-position.X+s.origin.X, y-position.Y+s.origin.Y)
 }
 
-func (s *Sprite) CollidesAt(x, y int) bool { return s.CellAt(x, y).Rune != 0 }
+func (s *Sprite) CollidesAt(x, y int) bool {
+	cell := s.CellAt(x, y)
+	return cell.Rune != 0 && !cell.NoCollision
+}

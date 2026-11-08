@@ -82,15 +82,16 @@ func newStormHazard(x, y float64, yFraction float64) *stormHazard {
 	cloud.SetVelocity(stormSpeed, 0)
 
 	bolt := sprite.New("lightning")
-	strike := styledFrame(StyleLightning,
+	for name, frame := range fadingLightningFrames(
 		" ϟ   ",
 		"  ╲  ",
 		"   ╲ ",
 		"  ╱  ",
 		" ↯   ",
-	)
-	if err := bolt.AddFrame("strike", strike); err != nil {
-		panic(err)
+	) {
+		if err := bolt.AddFrame(name, frame); err != nil {
+			panic(err)
+		}
 	}
 	bolt.Hide()
 	bolt.SetLayer(lightningLayer)
@@ -132,6 +133,24 @@ func styledFrame(style int, rows ...string) sprite.Frame {
 	return frame
 }
 
+func fadingLightningFrames(rows ...string) map[string]sprite.Frame {
+	bright := styledFrame(StyleLightning, rows...)
+	bright.Duration, bright.Next = 133*time.Millisecond, "strike-fade"
+	fade := styledFrame(StyleLightningFade, rows...)
+	fade.Duration, fade.Next = 25*time.Millisecond, "strike-dim"
+	dim := styledFrame(StyleLightningDim, rows...)
+	for _, frame := range []*sprite.Frame{&fade, &dim} {
+		for index := range frame.Cells {
+			frame.Cells[index].NoCollision = true
+		}
+	}
+	return map[string]sprite.Frame{
+		"strike-bright": bright,
+		"strike-fade":   fade,
+		"strike-dim":    dim,
+	}
+}
+
 func (s *stormHazard) updatePhase(step time.Duration) bool {
 	struck := false
 	s.phaseElapsed += step
@@ -158,7 +177,7 @@ func (s *stormHazard) applyPhase() {
 		s.bolt.Hide()
 	case stormStrike:
 		_ = s.cloud.SetFrame("rain-1")
-		_ = s.bolt.SetFrame("strike")
+		_ = s.bolt.SetFrame("strike-bright")
 	}
 }
 

@@ -94,11 +94,27 @@ motion while avoiding aerial, terrain, and altitude hazards.
   Grazer feet overlap the terrain surface slightly so uneven ground never
   makes them appear to hover.
 - Thunderhead Pass uses persistent screen-wide animated rain, four
-  independently phased thunderheads, sparse fern scenery, and six authored
-  tree hazards. Ordinary clouds and both pterosaur variants are absent. A dark,
-  collidable thundercloud ceiling makes the top rows dangerous and telegraphs
-  deterministic pseudo-random lightning strikes that extend only one or two
-  cells below it. The whole foreground scrolls at 4.2 cells/second rather than
+  independently phased thunderheads, sparse fern scenery, six authored tree
+  hazards, and one grazer pair around distance 318 to break up a former lull.
+  Ordinary clouds and both pterosaur variants are absent. A dark, four-row
+  collidable thundercloud ceiling uses rounded crown clusters, rolling
+  half-block undersides, and highlight/body/shadow color variation so it reads
+  as weather rather than a slab. Its texture drifts laterally at 1.9
+  cells/second, between the far-terrain and foreground rates, while retaining a
+  continuous cloud mass without sky-colored holes. It makes the top rows dangerous and telegraphs
+  deterministic pseudo-random lightning strikes that extend five cells below
+  it. Two much larger thunderheads occupy the lower half of the
+  playfield. Each briefly draws a harmless bright-white preview of the eventual bolt
+  before lightning reaches the terrain and remains live while crossing the
+  balloon's lane, forcing the player to climb rather than settle at one
+  altitude. Warning and strike masks end one cell inside the live foreground
+  surface rather than continuing behind it. The brilliant yellow strike drops
+  rapidly through pale cyan to electric blue, disappears shortly after
+  entering the balloon's lane, and terminates in a brief ground-impact burst
+  so the terrain contact reads clearly. Ordinary thunderhead and ceiling bolts
+  use the same quick yellow-to-blue decay. Only the bright-yellow portion is
+  damaging; cyan and blue afterglow frames are visual feedback only. The whole foreground scrolls at
+  4.2 cells/second rather than
   the ordinary 3.2 to convey strong wind, while far terrain retains its slower
   parallax ratio. Entering the stage switches to storm ambience and threat
   music; leaving it restores the ordinary daytime soundscape. Both boundaries

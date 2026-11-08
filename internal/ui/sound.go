@@ -11,6 +11,7 @@ type Sound interface {
 	BalloonPopped()
 	PterosaurLunged()
 	LightningStruck()
+	GroundLightningStruck()
 	StageCompleted()
 	SetMusicEnabled(bool)
 	SetEffectsEnabled(bool)

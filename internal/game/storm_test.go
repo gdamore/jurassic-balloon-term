@@ -103,7 +103,7 @@ func TestLightningHasCompactFootprint(t *testing.T) {
 	if ok {
 		t.Fatal("lightning is visible before strike")
 	}
-	if err := m.storm.bolt.SetFrame("strike"); err != nil {
+	if err := m.storm.bolt.SetFrame("strike-bright"); err != nil {
 		t.Fatal(err)
 	}
 	frame, ok = m.storm.bolt.ActiveFrame()
@@ -112,6 +112,23 @@ func TestLightningHasCompactFootprint(t *testing.T) {
 	}
 	if frame.Width != lightningWidth || frame.Height != 5 {
 		t.Fatalf("lightning size = %dx%d, want %dx5", frame.Width, frame.Height, lightningWidth)
+	}
+}
+
+func TestCompactLightningFadesQuickly(t *testing.T) {
+	storm := newStormHazard(20, 3, 0.1)
+	storm.phase = stormStrike
+	storm.applyPhase()
+	storm.bolt.Update(133 * time.Millisecond)
+	if storm.bolt.FrameName() != "strike-fade" {
+		t.Fatalf("ordinary lightning first fade = %q", storm.bolt.FrameName())
+	}
+	if groundStormFrameHasCollision(storm.bolt) {
+		t.Fatal("ordinary lightning fade still has a collision mask")
+	}
+	storm.bolt.Update(25 * time.Millisecond)
+	if storm.bolt.FrameName() != "strike-dim" {
+		t.Fatalf("ordinary lightning afterglow = %q", storm.bolt.FrameName())
 	}
 }
 

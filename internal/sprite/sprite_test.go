@@ -93,6 +93,21 @@ func TestCollisionIgnoresNonCollidableSprite(t *testing.T) {
 	}
 }
 
+func TestCollisionIgnoresDecorativeFrameCell(t *testing.T) {
+	a := New("balloon")
+	b := New("afterglow")
+	mustFrame(t, a, "on", FrameFromStrings("X"))
+	decorative := FrameFromStrings("X")
+	decorative.Cells[0].NoCollision = true
+	mustFrame(t, b, "on", decorative)
+	_ = a.SetFrame("on")
+	_ = b.SetFrame("on")
+
+	if _, collided := Collide(a, b); collided {
+		t.Fatal("decorative visible cell reported a collision")
+	}
+}
+
 func TestSceneOrdersLayersAndReportsOneCollisionPerPair(t *testing.T) {
 	scene := NewScene()
 	low := New("low")

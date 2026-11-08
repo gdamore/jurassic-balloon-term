@@ -11,8 +11,9 @@ import "time"
 // Cell is one drawable sprite cell. A zero Rune is transparent. Style is a
 // renderer-defined palette index, keeping this package independent of tcell.
 type Cell struct {
-	Rune  rune
-	Style int
+	Rune        rune
+	Style       int
+	NoCollision bool
 }
 
 // Frame is one image in a sprite animation.
