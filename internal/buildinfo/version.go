@@ -5,4 +5,4 @@
 package buildinfo
 
 // Version is the user-visible Jurassic Balloon release version.
-const Version = "0.1.2"
+const Version = "0.1.3"

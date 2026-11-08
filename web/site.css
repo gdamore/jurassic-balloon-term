@@ -34,6 +34,9 @@ main {
 #terminal {
   background: #173c59;
   cursor: default;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .launcher {
