@@ -5,6 +5,7 @@ package sprite
 
 import (
 	"fmt"
+	"math"
 	"time"
 )
 
@@ -95,7 +96,7 @@ func (s *Sprite) SetPosition(x, y float64) { s.x, s.y = x, y }
 func (s *Sprite) Position() (float64, float64) { return s.x, s.y }
 
 func (s *Sprite) CellPosition() Point {
-	return Point{X: int(s.x), Y: int(s.y)}
+	return Point{X: int(math.Floor(s.x)), Y: int(math.Floor(s.y))}
 }
 
 // SetVelocity sets motion in terminal cells per second.

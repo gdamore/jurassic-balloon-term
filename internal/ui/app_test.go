@@ -8,6 +8,7 @@ import (
 
 	"github.com/gdamore/jurassic-balloon-term/internal/game"
 	"github.com/gdamore/tcell/v3"
+	"github.com/gdamore/tcell/v3/color"
 )
 
 func TestKeyReleaseCapability(t *testing.T) {
@@ -37,6 +38,23 @@ func TestSkyColorVariesWithAltitude(t *testing.T) {
 	}
 	if got := skyColor(100, 24); got != bottom {
 		t.Fatalf("sky color below screen = %v, want bottom color %v", got, bottom)
+	}
+}
+
+func TestPartialBlockUsesUnderlyingLayerColor(t *testing.T) {
+	sky := color.NewRGBColor(10, 20, 30)
+	ridge := color.NewRGBColor(40, 50, 60)
+	style := tcell.StyleDefault.Foreground(ridge).Background(sky)
+	if got := underlyingColor("█", style, sky); got != ridge {
+		t.Fatalf("background over ridge = %v, want %v", got, ridge)
+	}
+	if got := underlyingColor(" ", style, sky); got != sky {
+		t.Fatalf("background over sky = %v, want %v", got, sky)
+	}
+	for _, block := range []rune{'▄', '▟', '▙'} {
+		if !isPartialBlock(block) {
+			t.Errorf("%q is not recognized as a partial block", block)
+		}
 	}
 }
 

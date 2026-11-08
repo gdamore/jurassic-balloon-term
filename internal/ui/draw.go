@@ -34,6 +34,9 @@ func (a *App) draw() {
 	rainStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(135, 203, 224))
 	lightningStyle := tcell.StyleDefault.Foreground(tcell.ColorYellow).Bold(true)
 	popStyle := tcell.StyleDefault.Foreground(tcell.ColorOrangeRed).Bold(true)
+	farTerrainStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(43, 85, 96))
+	groundSurfaceStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(91, 133, 72))
+	groundFillStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(82, 61, 43))
 
 	status := "hold space/up/W to burn  •  p pauses  •  q/esc quits"
 	if a.model.Paused {
@@ -43,17 +46,20 @@ func (a *App) draw() {
 	}
 
 	drawSprites(a.screen, a.model.Sprites(), map[int]tcell.Style{
-		game.StyleBalloon:     balloonStyle,
-		game.StyleBalloonFill: balloonFillStyle,
-		game.StyleFlame:       flameStyle,
-		game.StylePatch:       patchStyle,
-		game.StylePilot:       pilotStyle,
-		game.StyleFarCloud:    farCloudStyle,
-		game.StyleNearCloud:   nearCloudStyle,
-		game.StyleStormCloud:  stormCloudStyle,
-		game.StyleRain:        rainStyle,
-		game.StyleLightning:   lightningStyle,
-		game.StylePop:         popStyle,
+		game.StyleBalloon:       balloonStyle,
+		game.StyleBalloonFill:   balloonFillStyle,
+		game.StyleFlame:         flameStyle,
+		game.StylePatch:         patchStyle,
+		game.StylePilot:         pilotStyle,
+		game.StyleFarCloud:      farCloudStyle,
+		game.StyleNearCloud:     nearCloudStyle,
+		game.StyleStormCloud:    stormCloudStyle,
+		game.StyleRain:          rainStyle,
+		game.StyleLightning:     lightningStyle,
+		game.StylePop:           popStyle,
+		game.StyleFarTerrain:    farTerrainStyle,
+		game.StyleGroundSurface: groundSurfaceStyle,
+		game.StyleGroundFill:    groundFillStyle,
 	})
 
 	putCentered(a.screen, 0, width, "JURASSIC BALLOON TERM", titleStyle)
@@ -84,12 +90,43 @@ func drawSprites(screen tcell.Screen, sprites []*sprite.Sprite, palette map[int]
 					style = tcell.StyleDefault
 				}
 				if style.GetBackground() == color.Default {
-					style = style.Background(skyColor(bounds.Min.Y+y, height))
+					background := skyColor(bounds.Min.Y+y, height)
+					if isPartialBlock(cell.Rune) {
+						existing, existingStyle, _ := screen.Get(bounds.Min.X+x, bounds.Min.Y+y)
+						background = underlyingColor(existing, existingStyle, background)
+					}
+					style = style.Background(background)
 				}
 				screen.SetContent(bounds.Min.X+x, bounds.Min.Y+y, cell.Rune, nil, style)
 			}
 		}
 	}
+}
+
+func isPartialBlock(r rune) bool {
+	switch r {
+	case '▀', '▄', '▌', '▐', '▖', '▗', '▘', '▝', '▚', '▞', '▙', '▛', '▜', '▟':
+		return true
+	default:
+		return false
+	}
+}
+
+func underlyingColor(existing string, style tcell.Style, fallback color.Color) color.Color {
+	runes := []rune(existing)
+	if len(runes) == 0 {
+		return fallback
+	}
+	if runes[0] == ' ' {
+		if background := style.GetBackground(); background != color.Default {
+			return background
+		}
+		return fallback
+	}
+	if foreground := style.GetForeground(); foreground != color.Default {
+		return foreground
+	}
+	return fallback
 }
 
 func skyColor(y, height int) color.Color {

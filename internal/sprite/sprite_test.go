@@ -52,6 +52,14 @@ func TestVelocityUsesCellsPerSecond(t *testing.T) {
 	}
 }
 
+func TestCellPositionFloorsNegativeCoordinates(t *testing.T) {
+	s := New("moving")
+	s.SetPosition(-0.25, -0.75)
+	if got := s.CellPosition(); got != (Point{X: -1, Y: -1}) {
+		t.Fatalf("cell position = %v, want (-1, -1)", got)
+	}
+}
+
 func TestCollisionIgnoresTransparentCells(t *testing.T) {
 	a := New("a")
 	b := New("b")

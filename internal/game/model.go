@@ -34,13 +34,18 @@ const (
 	StyleRain
 	StyleLightning
 	StylePop
+	StyleFarTerrain
+	StyleGroundSurface
+	StyleGroundFill
 )
 
 const (
-	farCloudLayer  = 2
-	balloonLayer   = 10
-	nearCloudLayer = 20
-	popLayer       = 30
+	farTerrainLayer = 0
+	farCloudLayer   = 2
+	groundLayer     = 8
+	balloonLayer    = 10
+	nearCloudLayer  = 20
+	popLayer        = 30
 )
 
 const balloonPopDuration = 620 * time.Millisecond
@@ -69,6 +74,7 @@ type Model struct {
 	balloon *sprite.Sprite
 	clouds  []cloudTrack
 	storm   *stormHazard
+	terrain []*terrainLayer
 	random  *rand.Rand
 	cloudID int
 	burner  bool
@@ -88,6 +94,7 @@ func NewModel(width, height int) *Model {
 	}
 	m.scene.Add(m.balloon)
 	m.Resize(width, height)
+	m.addTerrain()
 	m.addClouds()
 	m.spawnStorm(float64(m.Width + 10))
 	return m
@@ -309,6 +316,19 @@ func (m *Model) spawnStorm(x float64) {
 	m.scene.Add(m.storm.bolt)
 }
 
+func (m *Model) addTerrain() {
+	balloonFrame, _ := m.balloon.ActiveFrame()
+	groundMax := min(5, max((m.Height-balloonFrame.Height)/2, 1))
+	groundMin := min(2, groundMax)
+	m.terrain = []*terrainLayer{
+		newTerrainLayer("far-terrain", 11, -0.55, farTerrainLayer, 1, 9, StyleFarTerrain, StyleFarTerrain, false),
+		newTerrainLayer("ground", 37, -3.2, groundLayer, groundMin, groundMax, StyleGroundSurface, StyleGroundFill, true),
+	}
+	for _, terrain := range m.terrain {
+		terrain.initialize(m.scene, m.Width, m.Height)
+	}
+}
+
 // Resize changes the play field and keeps the balloon on screen.
 func (m *Model) Resize(width, height int) {
 	firstSize := m.Width == 0 || m.Height == 0
@@ -330,6 +350,9 @@ func (m *Model) Resize(width, height int) {
 	if m.storm != nil {
 		x, _ := m.storm.cloud.Position()
 		m.storm.setPosition(x, m.cloudY(m.storm.yFraction, 5))
+	}
+	for _, terrain := range m.terrain {
+		terrain.resize(m.Height)
 	}
 }
 
@@ -400,8 +423,8 @@ func (m *Model) Update(step time.Duration) []sprite.Collision {
 	m.balloon.SetVelocity(0, m.vy)
 	collisions := m.scene.Update(step)
 	for _, collision := range collisions {
-		if (collision.A == m.balloon && collision.B == m.storm.bolt) ||
-			(collision.B == m.balloon && collision.A == m.storm.bolt) {
+		other, hitsBalloon := collisionWith(m.balloon, collision)
+		if hitsBalloon && (other == m.storm.bolt || m.isGroundHazard(other)) {
 			m.popBalloon()
 			break
 		}
@@ -423,8 +446,30 @@ func (m *Model) Update(step time.Duration) []sprite.Collision {
 		gap := 30 + m.random.Intn(40)
 		m.spawnStorm(float64(m.Width + gap))
 	}
+	for _, terrain := range m.terrain {
+		terrain.replenish(m.scene, m.Width, m.Height)
+	}
 	m.clampBalloon()
 	return collisions
+}
+
+func collisionWith(target *sprite.Sprite, collision sprite.Collision) (*sprite.Sprite, bool) {
+	if collision.A == target {
+		return collision.B, true
+	}
+	if collision.B == target {
+		return collision.A, true
+	}
+	return nil, false
+}
+
+func (m *Model) isGroundHazard(candidate *sprite.Sprite) bool {
+	for _, terrain := range m.terrain {
+		if terrain.contains(candidate) {
+			return true
+		}
+	}
+	return false
 }
 
 func (m *Model) popBalloon() {
