@@ -10,6 +10,7 @@ const (
 	EventBalloonPopped Event = iota
 	EventPterosaurLunged
 	EventLightningStruck
+	EventStageCompleted
 )
 
 // Events returns the events produced by the most recent simulation update.

@@ -102,14 +102,21 @@ func newStormHazard(x, y float64, yFraction float64) *stormHazard {
 
 func stormCloudFrame(raining bool, rows ...string) sprite.Frame {
 	frame := sprite.FrameFromStrings(rows...)
-	for index := range frame.Cells {
-		if frame.Cells[index].Rune == 0 {
-			continue
-		}
-		if raining && (frame.Cells[index].Rune == '╲' || frame.Cells[index].Rune == '│') {
-			frame.Cells[index].Style = StyleRain
-		} else {
-			frame.Cells[index].Style = StyleStormCloud
+	for y := 0; y < frame.Height; y++ {
+		for x := 0; x < frame.Width; x++ {
+			index := y*frame.Width + x
+			if frame.Cells[index].Rune == 0 {
+				continue
+			}
+			if raining && (frame.Cells[index].Rune == '╲' || frame.Cells[index].Rune == '│') {
+				frame.Cells[index].Style = StyleRain
+			} else if y == 1 {
+				frame.Cells[index].Style = StyleStormCloudHighlight
+			} else if y == 3 {
+				frame.Cells[index].Style = StyleStormCloudShadow
+			} else {
+				frame.Cells[index].Style = StyleStormCloud
+			}
 		}
 	}
 	return frame

@@ -93,6 +93,20 @@ func TestStormCloudBodyIsSafe(t *testing.T) {
 	}
 }
 
+func TestStormCloudHasShadedCrownAndUnderside(t *testing.T) {
+	storm := newStormHazard(20, 3, 0.1)
+	frame, _ := storm.cloud.ActiveFrame()
+	if crown := frame.CellAt(4, 1); crown.Style != StyleStormCloudHighlight {
+		t.Fatalf("storm crown style = %d, want %d", crown.Style, StyleStormCloudHighlight)
+	}
+	if body := frame.CellAt(4, 2); body.Style != StyleStormCloud {
+		t.Fatalf("storm body style = %d, want %d", body.Style, StyleStormCloud)
+	}
+	if underside := frame.CellAt(4, 3); underside.Style != StyleStormCloudShadow {
+		t.Fatalf("storm underside style = %d, want %d", underside.Style, StyleStormCloudShadow)
+	}
+}
+
 func TestVisibleLightningPopsBalloon(t *testing.T) {
 	m := NewModel(80, 30)
 	balloonX, balloonY := m.balloon.Position()

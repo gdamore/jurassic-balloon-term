@@ -44,6 +44,11 @@ func (s *gameSound) LightningStruck() {
 	_ = s.engine.Play(audio.CueLightningCrack)
 }
 
+func (s *gameSound) StageCompleted() {
+	_ = s.engine.SetContinuous(audio.ContinuousBurner, false)
+	_ = s.engine.SetMusic(audio.MusicVictory)
+}
+
 func (s *gameSound) Retry() {
 	_ = s.engine.SetContinuous(audio.ContinuousBurner, false)
 	_ = s.engine.SetEnvironment(audio.EnvironmentPrehistoricDay)

@@ -25,12 +25,21 @@ const (
 const (
 	StyleBalloon = iota
 	StyleBalloonFill
+	StyleBalloonHighlightFill
+	StyleBalloonShadowFill
+	StyleBalloonShade
 	StyleFlame
 	StylePatch
 	StylePilot
 	StyleFarCloud
+	StyleFarCloudHighlight
+	StyleFarCloudShadow
 	StyleNearCloud
+	StyleNearCloudHighlight
+	StyleNearCloudShadow
 	StyleStormCloud
+	StyleStormCloudHighlight
+	StyleStormCloudShadow
 	StyleRain
 	StyleLightning
 	StylePop
@@ -44,6 +53,11 @@ const (
 	StylePterosaurWingHighlight
 	StylePterosaurShadow
 	StylePterosaurBeak
+	StyleFinishFlag
+	StyleFinishPole
+	StyleTreeCanopy
+	StyleTreeHighlight
+	StyleTreeTrunk
 )
 
 const (
@@ -77,66 +91,86 @@ type Model struct {
 	Paused  bool
 	Elapsed time.Duration
 
-	scene     *sprite.Scene
-	balloon   *sprite.Sprite
-	clouds    []cloudTrack
-	storm     *stormHazard
-	pterosaur *pterosaurHazard
-	terrain   []*terrainLayer
-	random    *rand.Rand
-	cloudID   int
-	burner    bool
-	heat      float64
-	vy        float64
-	popped    bool
-	stopped   bool
-	popTime   time.Duration
-	events    []Event
+	scene      *sprite.Scene
+	balloon    *sprite.Sprite
+	clouds     []cloudTrack
+	storm      *stormHazard
+	pterosaur  *pterosaurHazard
+	finish     *sprite.Sprite
+	trees      []treeTrack
+	terrain    []*terrainLayer
+	random     *rand.Rand
+	cloudID    int
+	burner     bool
+	heat       float64
+	vy         float64
+	popped     bool
+	stopped    bool
+	popTime    time.Duration
+	events     []Event
+	stage      Stage
+	stageIndex int
+	distance   float64
+	completed  bool
 }
 
 // NewModel creates a model centered in the supplied play field.
 func NewModel(width, height int) *Model {
+	return NewStageModel(width, height, 0)
+}
+
+// NewStageModel creates a model for one stage of the journey.
+func NewStageModel(width, height, stageIndex int) *Model {
+	if stageIndex < 0 || stageIndex >= StageCount() {
+		stageIndex = 0
+	}
 	m := &Model{
-		scene:   sprite.NewScene(),
-		balloon: newBalloon(),
-		random:  rand.New(rand.NewSource(1)),
+		scene:      sprite.NewScene(),
+		balloon:    newBalloon(),
+		finish:     newFinishFlag(),
+		random:     rand.New(rand.NewSource(int64(stageIndex + 1))),
+		stage:      StageAt(stageIndex),
+		stageIndex: stageIndex,
 	}
 	m.scene.Add(m.balloon)
 	m.Resize(width, height)
 	m.addTerrain()
+	m.addStageTrees()
 	m.addClouds()
 	m.spawnStorm(float64(m.Width + 10))
 	m.spawnPterosaur(float64(m.Width + 35))
+	m.positionFinishFlag()
+	m.scene.Add(m.finish)
 	return m
 }
 
 func newBalloon() *sprite.Sprite {
 	balloon := sprite.New("balloon")
 	off := balloonFrame(
-		"  ╭───╮  ",
-		" ╱     ╲ ",
-		"│  ╳    │",
-		" ╲     ╱ ",
-		"  ╰─┬─╯  ",
+		"  ▗▄▄▄▖  ",
+		" ▟     ▙ ",
+		"▐  ╳    ▌",
+		" ▜     ▛ ",
+		"  ▝▄┬▄▘  ",
 		"   ╲ ╱   ",
 		"   ╰☺╯   ",
 	)
 	burn1 := balloonFrame(
-		"  ╭───╮  ",
-		" ╱     ╲ ",
-		"│  ╳    │",
-		" ╲     ╱ ",
-		"  ╰─┴─╯  ",
+		"  ▗▄▄▄▖  ",
+		" ▟     ▙ ",
+		"▐  ╳    ▌",
+		" ▜     ▛ ",
+		"  ▝▄┴▄▘  ",
 		"   ╲▲╱   ",
 		"   ╰☺╯   ",
 	)
 	burn1.Duration, burn1.Next = 100*time.Millisecond, "burn-2"
 	burn2 := balloonFrame(
-		"  ╭───╮  ",
-		" ╱     ╲ ",
-		"│  ╳    │",
-		" ╲     ╱ ",
-		"  ╰─┴─╯  ",
+		"  ▗▄▄▄▖  ",
+		" ▟     ▙ ",
+		"▐  ╳    ▌",
+		" ▜     ▛ ",
+		"  ▝▄┴▄▘  ",
 		"   ╲◆╱   ",
 		"   ╰☺╯   ",
 	)
@@ -196,7 +230,13 @@ func balloonFrame(rows ...string) sprite.Frame {
 		for x := span.min; x <= span.max; x++ {
 			index := span.y*frame.Width + x
 			if frame.Cells[index].Rune == 0 {
-				frame.Cells[index] = sprite.Cell{Rune: ' ', Style: StyleBalloonFill}
+				style := StyleBalloonFill
+				if x == span.min {
+					style = StyleBalloonHighlightFill
+				} else if x == span.max {
+					style = StyleBalloonShadowFill
+				}
+				frame.Cells[index] = sprite.Cell{Rune: ' ', Style: style}
 			}
 		}
 	}
@@ -208,16 +248,27 @@ func balloonFrame(rows ...string) sprite.Frame {
 			frame.Cells[index].Style = StylePatch
 		case '☺':
 			frame.Cells[index].Style = StylePilot
+		case '▙', '▌', '▛', '▘':
+			frame.Cells[index].Style = StyleBalloonShade
 		}
 	}
 	return frame
 }
 
-func cloudFrame(style int, rows ...string) sprite.Frame {
+func cloudFrame(style, highlight, shadow int, rows ...string) sprite.Frame {
 	frame := sprite.FrameFromStrings(rows...)
-	for index := range frame.Cells {
-		if frame.Cells[index].Rune != 0 {
+	for y := 0; y < frame.Height; y++ {
+		for x := 0; x < frame.Width; x++ {
+			index := y*frame.Width + x
+			if frame.Cells[index].Rune == 0 {
+				continue
+			}
 			frame.Cells[index].Style = style
+			if y == 0 {
+				frame.Cells[index].Style = highlight
+			} else if y == frame.Height-1 {
+				frame.Cells[index].Style = shadow
+			}
 		}
 	}
 	return frame
@@ -267,19 +318,19 @@ func newCloudFrame(style, variation int) sprite.Frame {
 	if style == StyleFarCloud {
 		switch variation {
 		case 0:
-			return cloudFrame(style,
+			return cloudFrame(style, StyleFarCloudHighlight, StyleFarCloudShadow,
 				"   ╭──╮   ",
 				"╭──╯  ╰──╮",
 				"╰────────╯",
 			)
 		case 1:
-			return cloudFrame(style,
+			return cloudFrame(style, StyleFarCloudHighlight, StyleFarCloudShadow,
 				"    ╭────╮    ",
 				"╭───╯    ╰───╮",
 				"╰────────────╯",
 			)
 		default:
-			return cloudFrame(style,
+			return cloudFrame(style, StyleFarCloudHighlight, StyleFarCloudShadow,
 				"  ╭──╮    ╭╮  ",
 				"╭─╯  ╰────╯╰─╮",
 				"╰────────────╯",
@@ -289,19 +340,19 @@ func newCloudFrame(style, variation int) sprite.Frame {
 
 	switch variation {
 	case 0:
-		return cloudFrame(style,
+		return cloudFrame(style, StyleNearCloudHighlight, StyleNearCloudShadow,
 			"   ▄▄   ",
 			" ▄████▄ ",
 			"▀██████▀",
 		)
 	case 1:
-		return cloudFrame(style,
+		return cloudFrame(style, StyleNearCloudHighlight, StyleNearCloudShadow,
 			"    ▄▄▄     ",
 			" ▄▄█████▄▄  ",
 			"▀██████████▀",
 		)
 	default:
-		return cloudFrame(style,
+		return cloudFrame(style, StyleNearCloudHighlight, StyleNearCloudShadow,
 			"  ▄▄      ▄  ",
 			"▄████▄▄▄▄██▄ ",
 			"▀███████████▀",
@@ -332,11 +383,27 @@ func (m *Model) addTerrain() {
 	groundMin := min(2, groundMax)
 	m.terrain = []*terrainLayer{
 		newTerrainLayer("far-terrain", 11, -0.55, farTerrainLayer, 1, 9, StyleFarTerrain, StyleFarTerrain, false),
-		newTerrainLayer("ground", 37, -3.2, groundLayer, groundMin, groundMax, StyleGroundSurface, StyleGroundFill, true),
+		newTerrainLayer("ground", 37, -worldScrollSpeed, groundLayer, groundMin, groundMax, StyleGroundSurface, StyleGroundFill, true),
 	}
 	for _, terrain := range m.terrain {
 		terrain.initialize(m.scene, m.Width, m.Height)
 	}
+}
+
+func (m *Model) addStageTrees() {
+	for index, distance := range m.stage.TreeDistances {
+		tree := newTree(index, distance)
+		m.positionTree(&tree)
+		m.trees = append(m.trees, tree)
+		m.scene.Add(tree.sprite)
+	}
+}
+
+func (m *Model) positionTree(tree *treeTrack) {
+	balloonX, _ := m.balloon.Position()
+	x := balloonX + tree.distance - m.distance
+	y := float64(max(m.Height-treeHeight-1, 0))
+	tree.sprite.SetPosition(x, y)
 }
 
 func (m *Model) spawnPterosaur(x float64) {
@@ -383,6 +450,12 @@ func (m *Model) Resize(width, height int) {
 	if m.pterosaur != nil {
 		m.pterosaur.setBaseY(m.pterosaurY(m.pterosaur.yFraction))
 	}
+	if m.finish != nil {
+		m.positionFinishFlag()
+	}
+	for index := range m.trees {
+		m.positionTree(&m.trees[index])
+	}
 	for _, terrain := range m.terrain {
 		terrain.resize(m.Height)
 	}
@@ -403,6 +476,18 @@ func (m *Model) Heat() float64 { return m.heat }
 func (m *Model) BurnerOn() bool { return m.burner }
 
 func (m *Model) Popped() bool { return m.popped }
+
+// Completed reports whether the balloon has crossed the stage goal.
+func (m *Model) Completed() bool { return m.completed }
+
+// Distance returns foreground distance traveled in terminal-cell units.
+func (m *Model) Distance() float64 { return m.distance }
+
+// Stage returns the current immutable stage definition.
+func (m *Model) Stage() Stage { return StageAt(m.stageIndex) }
+
+// StageIndex returns the zero-based position in the journey.
+func (m *Model) StageIndex() int { return m.stageIndex }
 
 // SetBurner changes the sole flight control. Heat responds over time in Update.
 func (m *Model) SetBurner(on bool) {
@@ -430,6 +515,9 @@ func (m *Model) Update(step time.Duration) []sprite.Collision {
 	if m.Paused || step <= 0 {
 		return nil
 	}
+	if m.completed {
+		return nil
+	}
 	if m.popped {
 		if m.stopped {
 			return nil
@@ -445,6 +533,7 @@ func (m *Model) Update(step time.Duration) []sprite.Collision {
 		return nil
 	}
 	m.Elapsed += step
+	m.distance = min(m.distance+worldScrollSpeed*step.Seconds(), m.stage.GoalDistance)
 	if m.storm.updatePhase(step) {
 		x, _ := m.storm.bolt.Position()
 		if frame, visible := m.storm.bolt.ActiveFrame(); visible && x < float64(m.Width) && x+float64(frame.Width) > 0 {
@@ -473,6 +562,10 @@ func (m *Model) Update(step time.Duration) []sprite.Collision {
 			m.popBalloon()
 			break
 		}
+	}
+	if !m.popped && m.distance >= m.stage.GoalDistance {
+		m.completeStage()
+		return collisions
 	}
 	for index, cloud := range m.clouds {
 		frame, ok := cloud.sprite.ActiveFrame()
@@ -515,6 +608,11 @@ func collisionWith(target *sprite.Sprite, collision sprite.Collision) (*sprite.S
 }
 
 func (m *Model) isGroundHazard(candidate *sprite.Sprite) bool {
+	for _, tree := range m.trees {
+		if tree.sprite == candidate {
+			return true
+		}
+	}
 	for _, terrain := range m.terrain {
 		if terrain.contains(candidate) {
 			return true
@@ -535,6 +633,29 @@ func (m *Model) popBalloon() {
 	m.balloon.SetLayer(popLayer)
 	m.storm.bolt.Hide()
 	_ = m.balloon.SetFrame("pop-1")
+}
+
+func (m *Model) completeStage() {
+	if m.completed || m.popped {
+		return
+	}
+	m.completed = true
+	m.SetBurner(false)
+	m.vy = 0
+	m.balloon.SetVelocity(0, 0)
+	m.finish.SetVelocity(0, 0)
+	m.storm.bolt.Hide()
+	m.events = append(m.events, EventStageCompleted)
+}
+
+func (m *Model) positionFinishFlag() {
+	balloonX, _ := m.balloon.Position()
+	x := balloonX + max(m.stage.GoalDistance-m.distance, 0)
+	y := float64(max(m.Height-finishHeight, 0))
+	m.finish.SetPosition(x, y)
+	if !m.completed {
+		m.finish.SetVelocity(-worldScrollSpeed, 0)
+	}
 }
 
 func (m *Model) clampBalloon() {

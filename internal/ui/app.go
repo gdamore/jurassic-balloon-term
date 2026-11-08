@@ -46,7 +46,7 @@ func (a *App) Run() error {
 	a.screen.SetStyle(tcell.StyleDefault.Background(tcell.ColorBlack).Foreground(tcell.ColorWhite))
 	a.screen.HideCursor()
 	width, height := a.screen.Size()
-	a.model = game.NewModel(width, height)
+	a.model = game.NewStageModel(width, height, 0)
 	if a.sound != nil {
 		a.sound.Start()
 	}
@@ -96,15 +96,19 @@ func (a *App) handleEvent(event tcell.Event) bool {
 		if event.Pressed() && isQuitEvent(event) {
 			return true
 		}
+		if a.model.Completed() {
+			if event.Pressed() && isRetryEvent(event) {
+				next := a.model.StageIndex() + 1
+				if next >= game.StageCount() {
+					next = 0
+				}
+				a.resetStage(next)
+			}
+			return false
+		}
 		if a.model.Popped() {
 			if event.Pressed() && isRetryEvent(event) {
-				width, height := a.screen.Size()
-				a.model = game.NewModel(width, height)
-				a.burnerKeys = make(map[burnerKey]struct{})
-				a.burnerUntil = time.Time{}
-				if a.sound != nil {
-					a.sound.Retry()
-				}
+				a.resetStage(a.model.StageIndex())
 			}
 			return false
 		}
@@ -131,6 +135,16 @@ func (a *App) handleEvent(event tcell.Event) bool {
 		}
 	}
 	return false
+}
+
+func (a *App) resetStage(stageIndex int) {
+	width, height := a.screen.Size()
+	a.model = game.NewStageModel(width, height, stageIndex)
+	a.burnerKeys = make(map[burnerKey]struct{})
+	a.burnerUntil = time.Time{}
+	if a.sound != nil {
+		a.sound.Retry()
+	}
 }
 
 func isQuitEvent(event *tcell.EventKey) bool {
@@ -209,5 +223,8 @@ func (a *App) handleGameEvent(event game.Event) {
 		a.sound.PterosaurLunged()
 	case game.EventLightningStruck:
 		a.sound.LightningStruck()
+	case game.EventStageCompleted:
+		a.sound.SetBurner(false)
+		a.sound.StageCompleted()
 	}
 }

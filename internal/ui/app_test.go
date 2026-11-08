@@ -138,6 +138,7 @@ type recordingSound struct {
 	pops       int
 	pterosaurs int
 	lightning  int
+	completed  int
 }
 
 func (*recordingSound) Start()              {}
@@ -145,6 +146,7 @@ func (s *recordingSound) SetBurner(on bool) { s.burner = append(s.burner, on) }
 func (s *recordingSound) BalloonPopped()    { s.pops++ }
 func (s *recordingSound) PterosaurLunged()  { s.pterosaurs++ }
 func (s *recordingSound) LightningStruck()  { s.lightning++ }
+func (s *recordingSound) StageCompleted()   { s.completed++ }
 func (*recordingSound) Retry()              {}
 func (*recordingSound) SetPaused(bool)      {}
 
@@ -158,11 +160,12 @@ func TestSoundTracksBurnerAndGameEvents(t *testing.T) {
 	a.handleGameEvent(game.EventPterosaurLunged)
 	a.handleGameEvent(game.EventLightningStruck)
 	a.handleGameEvent(game.EventBalloonPopped)
+	a.handleGameEvent(game.EventStageCompleted)
 
-	if len(sound.burner) != 3 || !sound.burner[0] || sound.burner[1] || sound.burner[2] {
-		t.Fatalf("burner sound changes = %v, want [true false false]", sound.burner)
+	if len(sound.burner) != 4 || !sound.burner[0] || sound.burner[1] || sound.burner[2] || sound.burner[3] {
+		t.Fatalf("burner sound changes = %v, want [true false false false]", sound.burner)
 	}
-	if sound.pterosaurs != 1 || sound.lightning != 1 || sound.pops != 1 {
-		t.Fatalf("cue counts = pterosaur:%d lightning:%d pop:%d, want 1 each", sound.pterosaurs, sound.lightning, sound.pops)
+	if sound.pterosaurs != 1 || sound.lightning != 1 || sound.pops != 1 || sound.completed != 1 {
+		t.Fatalf("cue counts = pterosaur:%d lightning:%d pop:%d complete:%d, want 1 each", sound.pterosaurs, sound.lightning, sound.pops, sound.completed)
 	}
 }

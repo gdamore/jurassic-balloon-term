@@ -65,6 +65,41 @@ func TestBalloonEnvelopeHasOpaqueFill(t *testing.T) {
 	}
 }
 
+func TestBalloonEnvelopeUsesCurvedShadedCells(t *testing.T) {
+	m := NewModel(40, 20)
+	frame, _ := m.balloon.ActiveFrame()
+	if corner := frame.CellAt(2, 0); corner.Rune != '▗' || corner.Style != StyleBalloon {
+		t.Fatalf("upper-left corner = %+v, want curved outline", corner)
+	}
+	if highlight := frame.CellAt(2, 1); highlight.Rune != ' ' || highlight.Style != StyleBalloonHighlightFill {
+		t.Fatalf("envelope highlight = %+v", highlight)
+	}
+	if shadow := frame.CellAt(6, 1); shadow.Rune != ' ' || shadow.Style != StyleBalloonShadowFill {
+		t.Fatalf("envelope shadow = %+v", shadow)
+	}
+	if edge := frame.CellAt(7, 1); edge.Rune != '▙' || edge.Style != StyleBalloonShade {
+		t.Fatalf("shaded edge = %+v", edge)
+	}
+}
+
+func TestCloudsUseDepthAppropriateShading(t *testing.T) {
+	far := newCloudFrame(StyleFarCloud, 0)
+	if top := far.CellAt(3, 0); top.Style != StyleFarCloudHighlight {
+		t.Fatalf("far cloud crown style = %d, want %d", top.Style, StyleFarCloudHighlight)
+	}
+	if bottom := far.CellAt(0, 2); bottom.Style != StyleFarCloudShadow {
+		t.Fatalf("far cloud underside style = %d, want %d", bottom.Style, StyleFarCloudShadow)
+	}
+
+	near := newCloudFrame(StyleNearCloud, 0)
+	if top := near.CellAt(3, 0); top.Style != StyleNearCloudHighlight {
+		t.Fatalf("near cloud crown style = %d, want %d", top.Style, StyleNearCloudHighlight)
+	}
+	if bottom := near.CellAt(0, 2); bottom.Style != StyleNearCloudShadow {
+		t.Fatalf("near cloud underside style = %d, want %d", bottom.Style, StyleNearCloudShadow)
+	}
+}
+
 func TestCloudDepthAndMotion(t *testing.T) {
 	m := NewModel(100, 30)
 	if len(m.clouds) != 5 {

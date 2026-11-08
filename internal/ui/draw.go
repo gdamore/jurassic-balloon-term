@@ -22,15 +22,24 @@ func (a *App) draw() {
 	titleStyle := tcell.StyleDefault.Foreground(tcell.ColorLightYellow).Background(skyColor(0, height)).Bold(true)
 	infoStyle := tcell.StyleDefault.Foreground(tcell.ColorWhite).Background(skyColor(height-1, height))
 	flightStyle := tcell.StyleDefault.Foreground(tcell.ColorWhite).Background(skyColor(height-3, height))
-	balloonStyle := tcell.StyleDefault.Foreground(tcell.ColorLightYellow)
-	envelopeFill := color.NewRGBColor(91, 72, 55)
+	balloonStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(238, 202, 111)).Bold(true)
+	envelopeFill := color.NewRGBColor(145, 91, 55)
 	balloonFillStyle := tcell.StyleDefault.Background(envelopeFill)
+	balloonHighlightFillStyle := tcell.StyleDefault.Background(color.NewRGBColor(181, 119, 67))
+	balloonShadowFillStyle := tcell.StyleDefault.Background(color.NewRGBColor(101, 64, 55))
+	balloonShadeStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(174, 112, 59)).Bold(true)
 	flameStyle := tcell.StyleDefault.Foreground(tcell.ColorOrange).Bold(true)
 	patchStyle := tcell.StyleDefault.Foreground(tcell.ColorMaroon).Background(envelopeFill)
 	pilotStyle := tcell.StyleDefault.Foreground(tcell.ColorLightCyan).Bold(true)
 	farCloudStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(154, 186, 199))
-	nearCloudStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(236, 245, 244)).Bold(true)
+	farCloudHighlightStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(177, 204, 211))
+	farCloudShadowStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(111, 155, 174))
+	nearCloudStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(218, 235, 235)).Bold(true)
+	nearCloudHighlightStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(244, 249, 246)).Bold(true)
+	nearCloudShadowStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(169, 202, 210)).Bold(true)
 	stormCloudStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(58, 62, 76)).Bold(true)
+	stormCloudHighlightStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(86, 91, 108)).Bold(true)
+	stormCloudShadowStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(35, 40, 55)).Bold(true)
 	rainStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(135, 203, 224))
 	lightningStyle := tcell.StyleDefault.Foreground(tcell.ColorYellow).Bold(true)
 	popStyle := tcell.StyleDefault.Foreground(tcell.ColorOrangeRed).Bold(true)
@@ -45,23 +54,43 @@ func (a *App) draw() {
 	pterosaurWingHighlightStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(230, 160, 120)).Bold(true)
 	pterosaurShadowStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(115, 63, 78)).Bold(true)
 	pterosaurBeakStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(220, 103, 68)).Bold(true)
+	finishFlagStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(247, 189, 74)).Bold(true)
+	finishPoleStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(224, 231, 214)).Bold(true)
+	treeCanopyStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(38, 105, 55)).Bold(true)
+	treeHighlightStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(76, 145, 71)).Bold(true)
+	treeTrunkStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(105, 67, 43)).Bold(true)
 
 	status := "hold space/up/W to burn  •  p pauses  •  q/esc quits"
 	if a.model.Paused {
 		status = "PAUSED  •  p resumes  •  q/esc quits"
 	} else if a.model.Popped() {
 		status = "POPPED!  •  space/R/enter retries  •  q/esc quits"
+	} else if a.model.Completed() {
+		if a.model.StageIndex()+1 == game.StageCount() {
+			status = "JOURNEY COMPLETE!  •  space/R/enter restarts  •  q/esc quits"
+		} else {
+			status = "STAGE CLEAR!  •  space/R/enter continues  •  q/esc quits"
+		}
 	}
 
 	drawSprites(a.screen, a.model.Sprites(), map[int]tcell.Style{
 		game.StyleBalloon:                balloonStyle,
 		game.StyleBalloonFill:            balloonFillStyle,
+		game.StyleBalloonHighlightFill:   balloonHighlightFillStyle,
+		game.StyleBalloonShadowFill:      balloonShadowFillStyle,
+		game.StyleBalloonShade:           balloonShadeStyle,
 		game.StyleFlame:                  flameStyle,
 		game.StylePatch:                  patchStyle,
 		game.StylePilot:                  pilotStyle,
 		game.StyleFarCloud:               farCloudStyle,
+		game.StyleFarCloudHighlight:      farCloudHighlightStyle,
+		game.StyleFarCloudShadow:         farCloudShadowStyle,
 		game.StyleNearCloud:              nearCloudStyle,
+		game.StyleNearCloudHighlight:     nearCloudHighlightStyle,
+		game.StyleNearCloudShadow:        nearCloudShadowStyle,
 		game.StyleStormCloud:             stormCloudStyle,
+		game.StyleStormCloudHighlight:    stormCloudHighlightStyle,
+		game.StyleStormCloudShadow:       stormCloudShadowStyle,
 		game.StyleRain:                   rainStyle,
 		game.StyleLightning:              lightningStyle,
 		game.StylePop:                    popStyle,
@@ -75,12 +104,19 @@ func (a *App) draw() {
 		game.StylePterosaurWingHighlight: pterosaurWingHighlightStyle,
 		game.StylePterosaurShadow:        pterosaurShadowStyle,
 		game.StylePterosaurBeak:          pterosaurBeakStyle,
+		game.StyleFinishFlag:             finishFlagStyle,
+		game.StyleFinishPole:             finishPoleStyle,
+		game.StyleTreeCanopy:             treeCanopyStyle,
+		game.StyleTreeHighlight:          treeHighlightStyle,
+		game.StyleTreeTrunk:              treeTrunkStyle,
 	})
 
-	putCentered(a.screen, 0, width, "JURASSIC BALLOON TERM", titleStyle)
+	stage := a.model.Stage()
+	title := fmt.Sprintf("JURASSIC BALLOON — %d/%d %s", a.model.StageIndex()+1, game.StageCount(), strings.ToUpper(stage.Name))
+	putCentered(a.screen, 0, width, title, titleStyle)
 	putCentered(a.screen, height-1, width, status, infoStyle)
-	if !a.model.Popped() && width >= 34 && height >= 12 {
-		flight := fmt.Sprintf("heat %3.0f%%  •  vertical speed %+0.1f", a.model.Heat()*100, a.model.VerticalVelocity())
+	if !a.model.Popped() && !a.model.Completed() && width >= 34 && height >= 12 {
+		flight := fmt.Sprintf("distance %3.0f/%3.0f  •  heat %3.0f%%  •  v %+0.1f", a.model.Distance(), stage.GoalDistance, a.model.Heat()*100, a.model.VerticalVelocity())
 		putCentered(a.screen, height-3, width, flight, flightStyle)
 	}
 	a.screen.Show()

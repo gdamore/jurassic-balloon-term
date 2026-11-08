@@ -56,6 +56,30 @@ motion while avoiding aerial, terrain, and altitude hazards.
   example and are expected to increase speed and difficulty.
 - The terminal version is unequivocally **real time**, not turn based.
 
+### Initial campaign structure
+
+- The first campaign has five stages totaling about fifteen minutes for a
+  clean run. Deaths will make a first completion longer.
+- Progress is called **distance traveled** even while constant world speed
+  makes it directly proportional to elapsed play time.
+- The initial target stages are Fern Valley (2:00 / 384 units), Red-Eye Run
+  (2:30 / 480), Thunderhead Pass (3:00 / 576), Long-Neck Grove (3:30 / 672),
+  and Carnivore Country (4:00 / 768).
+- A visible completion flag ends each finite stage and provides the persistent
+  save/unlock boundary. Checkpoints within longer stages are authored section
+  boundaries, initially spaced roughly 60–75 seconds apart.
+- Fuel is not required for this first campaign iteration. Reconsider it only
+  after flight, hazards, stage pacing, and restarts are working together.
+- The current Fern Valley prototype introduces a deterministic grove of tall,
+  dangerous ordinary trees in its second half. This breaks up the otherwise
+  safe bottom-third flight lane without raising the floor across the whole
+  stage.
+
+A post-campaign endless run that unlocks after completing all five stages is a
+strong next-mode idea, not yet a committed implementation. It would measure
+survival time/distance and steadily increase encounter difficulty rather than
+use a completion flag.
+
 ### Flight and controls
 
 - Gravity matters.

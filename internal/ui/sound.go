@@ -11,6 +11,7 @@ type Sound interface {
 	BalloonPopped()
 	PterosaurLunged()
 	LightningStruck()
+	StageCompleted()
 	Retry()
 	SetPaused(bool)
 }
