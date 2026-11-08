@@ -59,6 +59,25 @@ func TestPartialBlockUsesUnderlyingLayerColor(t *testing.T) {
 	}
 }
 
+func TestSolidBlockUsesBackgroundFill(t *testing.T) {
+	fill := color.NewRGBColor(82, 61, 43)
+	r, style := paintedCell('█', tcell.StyleDefault.Foreground(fill).Background(tcell.ColorBlue))
+	if r != ' ' {
+		t.Fatalf("painted solid block rune = %q, want space", r)
+	}
+	if got := style.GetBackground(); got != fill {
+		t.Fatalf("painted solid block background = %v, want %v", got, fill)
+	}
+	if got := style.GetForeground(); got != fill {
+		t.Fatalf("painted solid block foreground = %v, want %v", got, fill)
+	}
+
+	partial, _ := paintedCell('▄', tcell.StyleDefault.Foreground(fill))
+	if partial != '▄' {
+		t.Fatalf("painted partial block rune = %q, want unchanged", partial)
+	}
+}
+
 func TestRetryAndQuitKeys(t *testing.T) {
 	for _, event := range []*tcell.EventKey{
 		tcell.NewEventKey(tcell.KeyRune, " ", tcell.ModNone),

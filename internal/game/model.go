@@ -212,7 +212,7 @@ func newBalloon() *sprite.Sprite {
 		" ▜     ▛ ",
 		"  ▝▄┬▄▘  ",
 		"   ╲ ╱   ",
-		"   ╰☺╯   ",
+		"   ╰ö╯   ",
 	)
 	burn1 := balloonFrame(
 		"  ▗▄▄▄▖  ",
@@ -221,7 +221,7 @@ func newBalloon() *sprite.Sprite {
 		" ▜     ▛ ",
 		"  ▝▄┴▄▘  ",
 		"   ╲▲╱   ",
-		"   ╰☺╯   ",
+		"   ╰ö╯   ",
 	)
 	burn1.Duration, burn1.Next = 70*time.Millisecond, "burn-2"
 	burn2 := balloonFrame(
@@ -231,7 +231,7 @@ func newBalloon() *sprite.Sprite {
 		" ▜     ▛ ",
 		"  ▝▄┴▄▘  ",
 		"   ╲◆╱   ",
-		"   ╰☺╯   ",
+		"   ╰ö╯   ",
 	)
 	burn2.Duration, burn2.Next = 80*time.Millisecond, "burn-3"
 	burn3 := balloonFrame(
@@ -241,7 +241,7 @@ func newBalloon() *sprite.Sprite {
 		" ▜     ▛ ",
 		"  ▝▄┴▄▘  ",
 		"   ╲▼╱   ",
-		"   ╰☺╯   ",
+		"   ╰ö╯   ",
 	)
 	burn3.Duration, burn3.Next = 60*time.Millisecond, "burn-1"
 	pop1 := balloonPopFrame(
@@ -251,7 +251,7 @@ func newBalloon() *sprite.Sprite {
 		"──█████──",
 		"   ███   ",
 		"  ╱ █ ╲  ",
-		"   ╰☺╯   ",
+		"   ╰ö╯   ",
 	)
 	pop1.Duration, pop1.Next = 55*time.Millisecond, "pop-2"
 	pop2 := balloonPopFrame(
@@ -261,7 +261,7 @@ func newBalloon() *sprite.Sprite {
 		"▓███████▓",
 		" ▝▓███▓▘ ",
 		"◢   │   ◣",
-		"   ╰☺╯   ",
+		"   ╰ö╯   ",
 	)
 	pop2.Duration, pop2.Next = 70*time.Millisecond, "pop-3"
 	pop3 := balloonPopFrame(
@@ -271,7 +271,7 @@ func newBalloon() *sprite.Sprite {
 		"▒█▒   ▒█▒",
 		"▓▒██▒██▒▓",
 		"◢ ◆ │ ◆ ◣",
-		"   ╰☺╯   ",
+		"   ╰ö╯   ",
 	)
 	pop3.Duration, pop3.Next = 85*time.Millisecond, "pop-4"
 	pop4 := balloonPopFrame(
@@ -281,7 +281,7 @@ func newBalloon() *sprite.Sprite {
 		"▒  ▒ ▒  ▒",
 		"▓▖ ▝▒▘ ▗▓",
 		" ◆◢ │ ◣◆ ",
-		"   ╰☹╯   ",
+		"   ╰ò╯   ",
 	)
 	pop4.Duration, pop4.Next = 100*time.Millisecond, "pop-5"
 	pop5 := balloonPopFrame(
@@ -291,7 +291,7 @@ func newBalloon() *sprite.Sprite {
 		" ░     ░ ",
 		"  ◢   ◣  ",
 		"    │    ",
-		"   ╰☹╯   ",
+		"   ╰ò╯   ",
 	)
 	pop5.Duration, pop5.Next = 130*time.Millisecond, "pop-6"
 	pop6 := balloonPopFrame(
@@ -301,7 +301,7 @@ func newBalloon() *sprite.Sprite {
 		" ◆     ◆ ",
 		"         ",
 		"    │    ",
-		"   ╰☹╯   ",
+		"   ╰ò╯   ",
 	)
 	pop6.Duration, pop6.Next = 180*time.Millisecond, ""
 	for name, frame := range map[string]sprite.Frame{
@@ -338,7 +338,7 @@ func balloonPopFrame(rows ...string) sprite.Frame {
 			cell.Style = StylePopDebris
 		case '╰', '╯', '│':
 			cell.Style = StylePopBasket
-		case '☺', '☹':
+		case 'ö', 'ò':
 			cell.Style = StylePilot
 		}
 	}
@@ -375,7 +375,7 @@ func balloonFrame(rows ...string) sprite.Frame {
 			frame.Cells[index].Style = StyleFlameEmber
 		case '╳':
 			frame.Cells[index].Style = StylePatch
-		case '☺':
+		case 'ö':
 			frame.Cells[index].Style = StylePilot
 		case '▙', '▌', '▛', '▘':
 			frame.Cells[index].Style = StyleBalloonShade

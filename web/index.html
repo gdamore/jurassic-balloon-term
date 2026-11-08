@@ -73,6 +73,13 @@
         terminal.focus();
       });
     </script>
-    <script type="module" src="tcell.js"></script>
+    <script type="module">
+      try {
+        await document.fonts.load('14px "Jurassic Mono"');
+        await document.fonts.load('bold 14px "Jurassic Mono"');
+      } finally {
+        await import("./tcell.js");
+      }
+    </script>
   </body>
 </html>

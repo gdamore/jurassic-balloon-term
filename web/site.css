@@ -3,6 +3,26 @@
   background: #173c59;
 }
 
+@font-face {
+  font-family: "Jurassic Mono";
+  src: url("fonts/JetBrainsMono-Regular.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+}
+
+@font-face {
+  font-family: "Jurassic Mono";
+  src: url("fonts/JetBrainsMono-Bold.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 700;
+  font-display: block;
+}
+
+* {
+  font-family: "Jurassic Mono", "JetBrains Mono", Menlo, monospace;
+}
+
 html,
 body,
 main {

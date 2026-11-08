@@ -284,7 +284,7 @@ func drawHUDRune(screen tcell.Screen, x, y int, r rune, foreground color.Color, 
 	if bold {
 		style = style.Bold(true)
 	}
-	screen.SetContent(x, y, r, nil, style)
+	drawCell(screen, x, y, r, style)
 }
 
 func drawCenterOverlay(screen tcell.Screen, title, detail string) {
@@ -504,7 +504,7 @@ func drawTitleCloud(screen tcell.Screen, startX, startY int, cloud titleCloud, s
 				continue
 			}
 			style := tcell.StyleDefault.Foreground(foreground).Background(skyColor(screenY, screenHeight))
-			screen.SetContent(screenX, screenY, r, nil, style)
+			drawCell(screen, screenX, screenY, r, style)
 		}
 	}
 }
@@ -525,9 +525,9 @@ func drawTitleTerrain(screen tcell.Screen, screenHeight int, elapsed time.Durati
 		}
 		existing, existingStyle, _ := screen.Get(x, top)
 		background := underlyingColor(existing, existingStyle, skyColor(top, screenHeight))
-		screen.SetContent(x, top, surfaceRune, nil, tcell.StyleDefault.Foreground(surface).Background(background))
+		drawCell(screen, x, top, surfaceRune, tcell.StyleDefault.Foreground(surface).Background(background))
 		for y := top + 1; y < screenHeight; y++ {
-			screen.SetContent(x, y, '█', nil, tcell.StyleDefault.Foreground(fill).Background(fill))
+			drawCell(screen, x, y, '█', tcell.StyleDefault.Foreground(fill).Background(fill))
 		}
 		previous = columnHeight
 	}
@@ -547,7 +547,7 @@ func (a *App) drawStartBalloon(startX, startY, screenHeight int) {
 		"▐██╳████▌",
 		" ▜█████▛ ",
 		"  ▝▄┬▄▘  ",
-		"   ╰☺╯   ",
+		"   ╰ö╯   ",
 	}
 	fill := color.NewRGBColor(145, 91, 55)
 	highlight := color.NewRGBColor(181, 119, 67)
@@ -578,10 +578,10 @@ func (a *App) drawStartBalloon(startX, startY, screenHeight int) {
 				style = tcell.StyleDefault.Foreground(patch).Background(fill).Bold(true)
 			case '▙', '▌', '▛', '▘':
 				style = tcell.StyleDefault.Foreground(shadow).Background(background).Bold(true)
-			case '☺':
+			case 'ö':
 				style = tcell.StyleDefault.Foreground(tcell.ColorLightCyan).Background(background).Bold(true)
 			}
-			a.screen.SetContent(startX+x, screenY, r, nil, style)
+			drawCell(a.screen, startX+x, screenY, r, style)
 		}
 	}
 }
@@ -617,10 +617,28 @@ func drawSprites(screen tcell.Screen, sprites []*sprite.Sprite, palette map[int]
 					background = underlyingColor(existing, existingStyle, background)
 					style = style.Background(background)
 				}
-				screen.SetContent(bounds.Min.X+x, bounds.Min.Y+y, cell.Rune, nil, style)
+				drawCell(screen, bounds.Min.X+x, bounds.Min.Y+y, cell.Rune, style)
 			}
 		}
 	}
+}
+
+// drawCell paints a full block as a cell background rather than asking the
+// selected font to rasterize U+2588. Canvas fonts can leave sub-pixel seams
+// around that glyph; a background rectangle is exact and font-neutral.
+func drawCell(screen tcell.Screen, x, y int, r rune, style tcell.Style) {
+	r, style = paintedCell(r, style)
+	screen.SetContent(x, y, r, nil, style)
+}
+
+func paintedCell(r rune, style tcell.Style) (rune, tcell.Style) {
+	if r == '█' {
+		if fill := style.GetForeground(); fill != color.Default {
+			r = ' '
+			style = style.Foreground(fill).Background(fill)
+		}
+	}
+	return r, style
 }
 
 func isPartialBlock(r rune) bool {

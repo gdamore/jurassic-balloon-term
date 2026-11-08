@@ -19,6 +19,12 @@ mkdir -p "$output_dir"
 cp -f web/index.html web/site.css "$output_dir/"
 cp -f "$webfiles_dir/tcell.js" "$webfiles_dir/termstyle.css" \
   "$webfiles_dir/beep.wav" "$output_dir/"
+perl -pi -e 's/"Menlo", "Andale Mono", "Courier New", monospace/"Jurassic Mono", "JetBrains Mono", "Menlo", monospace/' \
+  "$output_dir/tcell.js"
+grep -q '"Jurassic Mono"' "$output_dir/tcell.js"
+mkdir -p "$output_dir/fonts"
+chmod -R u+w "$output_dir/fonts"
+cp -Rf web/fonts/. "$output_dir/fonts/"
 mkdir -p "$output_dir/ghostty-web"
 chmod -R u+w "$output_dir/ghostty-web"
 cp -Rf "$webfiles_dir/ghostty-web/." "$output_dir/ghostty-web/"

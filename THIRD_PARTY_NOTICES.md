@@ -45,6 +45,9 @@ document linked above.
 - [ghostty-web](https://github.com/coder/ghostty-web), MIT License. The browser
   distribution includes its license alongside the runtime files supplied by
   Tcell.
+- [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono), SIL Open Font
+  License 1.1. The unmodified browser fonts and full `OFL.txt` travel together
+  in the web distribution.
 - [Oto](https://github.com/ebitengine/oto), Apache License 2.0.
 - [oggvorbis](https://github.com/jfreymuth/oggvorbis), MIT License,
   Copyright (c) 2016 Johann Freymuth.
