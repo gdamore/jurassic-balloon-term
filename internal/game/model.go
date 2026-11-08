@@ -37,6 +37,13 @@ const (
 	StyleFarTerrain
 	StyleGroundSurface
 	StyleGroundFill
+	StylePterosaur
+	StylePterosaurCrest
+	StylePterosaurEye
+	StylePterosaurWing
+	StylePterosaurWingHighlight
+	StylePterosaurShadow
+	StylePterosaurBeak
 )
 
 const (
@@ -70,19 +77,20 @@ type Model struct {
 	Paused  bool
 	Elapsed time.Duration
 
-	scene   *sprite.Scene
-	balloon *sprite.Sprite
-	clouds  []cloudTrack
-	storm   *stormHazard
-	terrain []*terrainLayer
-	random  *rand.Rand
-	cloudID int
-	burner  bool
-	heat    float64
-	vy      float64
-	popped  bool
-	stopped bool
-	popTime time.Duration
+	scene     *sprite.Scene
+	balloon   *sprite.Sprite
+	clouds    []cloudTrack
+	storm     *stormHazard
+	pterosaur *pterosaurHazard
+	terrain   []*terrainLayer
+	random    *rand.Rand
+	cloudID   int
+	burner    bool
+	heat      float64
+	vy        float64
+	popped    bool
+	stopped   bool
+	popTime   time.Duration
 }
 
 // NewModel creates a model centered in the supplied play field.
@@ -97,6 +105,7 @@ func NewModel(width, height int) *Model {
 	m.addTerrain()
 	m.addClouds()
 	m.spawnStorm(float64(m.Width + 10))
+	m.spawnPterosaur(float64(m.Width + 35))
 	return m
 }
 
@@ -329,6 +338,25 @@ func (m *Model) addTerrain() {
 	}
 }
 
+func (m *Model) spawnPterosaur(x float64) {
+	if m.pterosaur != nil {
+		m.scene.Remove(m.pterosaur.sprite)
+	}
+	yFraction := 0.1 + m.random.Float64()*0.8
+	m.pterosaur = newPterosaurHazard(x, m.pterosaurY(yFraction), yFraction)
+	m.scene.Add(m.pterosaur.sprite)
+}
+
+func (m *Model) pterosaurY(fraction float64) float64 {
+	groundHeight := 0
+	if len(m.terrain) != 0 {
+		groundHeight = m.terrain[len(m.terrain)-1].maxHeight
+	}
+	minY := 2
+	maxY := max(minY, m.Height-groundHeight-pterosaurHeight-1)
+	return float64(minY) + float64(maxY-minY)*fraction
+}
+
 // Resize changes the play field and keeps the balloon on screen.
 func (m *Model) Resize(width, height int) {
 	firstSize := m.Width == 0 || m.Height == 0
@@ -350,6 +378,9 @@ func (m *Model) Resize(width, height int) {
 	if m.storm != nil {
 		x, _ := m.storm.cloud.Position()
 		m.storm.setPosition(x, m.cloudY(m.storm.yFraction, 5))
+	}
+	if m.pterosaur != nil {
+		m.pterosaur.setBaseY(m.pterosaurY(m.pterosaur.yFraction))
 	}
 	for _, terrain := range m.terrain {
 		terrain.resize(m.Height)
@@ -413,6 +444,7 @@ func (m *Model) Update(step time.Duration) []sprite.Collision {
 	}
 	m.Elapsed += step
 	m.storm.updatePhase(step)
+	m.pterosaur.updatePath(step)
 	dt := step.Seconds()
 	if m.burner {
 		m.heat += (1 - m.heat) * (1 - math.Exp(-dt/heatResponse.Seconds()))
@@ -424,7 +456,7 @@ func (m *Model) Update(step time.Duration) []sprite.Collision {
 	collisions := m.scene.Update(step)
 	for _, collision := range collisions {
 		other, hitsBalloon := collisionWith(m.balloon, collision)
-		if hitsBalloon && (other == m.storm.bolt || m.isGroundHazard(other)) {
+		if hitsBalloon && (other == m.storm.bolt || other == m.pterosaur.sprite || m.isGroundHazard(other)) {
 			m.popBalloon()
 			break
 		}
@@ -445,6 +477,12 @@ func (m *Model) Update(step time.Duration) []sprite.Collision {
 	if stormX+stormCloudWidth < 0 {
 		gap := 30 + m.random.Intn(40)
 		m.spawnStorm(float64(m.Width + gap))
+	}
+	pterosaurX, _ := m.pterosaur.sprite.Position()
+	pterosaurFrame, _ := m.pterosaur.sprite.ActiveFrame()
+	if pterosaurX+float64(pterosaurFrame.Width) < 0 {
+		gap := 30 + m.random.Intn(60)
+		m.spawnPterosaur(float64(m.Width + gap))
 	}
 	for _, terrain := range m.terrain {
 		terrain.replenish(m.scene, m.Width, m.Height)

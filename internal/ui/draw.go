@@ -37,6 +37,14 @@ func (a *App) draw() {
 	farTerrainStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(43, 85, 96))
 	groundSurfaceStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(91, 133, 72))
 	groundFillStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(82, 61, 43))
+	pterosaurBody := color.NewRGBColor(190, 78, 57)
+	pterosaurStyle := tcell.StyleDefault.Foreground(pterosaurBody).Bold(true)
+	pterosaurCrestStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(218, 101, 67)).Bold(true)
+	pterosaurEyeStyle := tcell.StyleDefault.Foreground(tcell.ColorBlack).Background(pterosaurBody).Bold(true)
+	pterosaurWingStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(202, 123, 112)).Bold(true)
+	pterosaurWingHighlightStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(230, 160, 120)).Bold(true)
+	pterosaurShadowStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(115, 63, 78)).Bold(true)
+	pterosaurBeakStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(220, 103, 68)).Bold(true)
 
 	status := "hold space/up/W to burn  •  p pauses  •  q/esc quits"
 	if a.model.Paused {
@@ -46,20 +54,27 @@ func (a *App) draw() {
 	}
 
 	drawSprites(a.screen, a.model.Sprites(), map[int]tcell.Style{
-		game.StyleBalloon:       balloonStyle,
-		game.StyleBalloonFill:   balloonFillStyle,
-		game.StyleFlame:         flameStyle,
-		game.StylePatch:         patchStyle,
-		game.StylePilot:         pilotStyle,
-		game.StyleFarCloud:      farCloudStyle,
-		game.StyleNearCloud:     nearCloudStyle,
-		game.StyleStormCloud:    stormCloudStyle,
-		game.StyleRain:          rainStyle,
-		game.StyleLightning:     lightningStyle,
-		game.StylePop:           popStyle,
-		game.StyleFarTerrain:    farTerrainStyle,
-		game.StyleGroundSurface: groundSurfaceStyle,
-		game.StyleGroundFill:    groundFillStyle,
+		game.StyleBalloon:                balloonStyle,
+		game.StyleBalloonFill:            balloonFillStyle,
+		game.StyleFlame:                  flameStyle,
+		game.StylePatch:                  patchStyle,
+		game.StylePilot:                  pilotStyle,
+		game.StyleFarCloud:               farCloudStyle,
+		game.StyleNearCloud:              nearCloudStyle,
+		game.StyleStormCloud:             stormCloudStyle,
+		game.StyleRain:                   rainStyle,
+		game.StyleLightning:              lightningStyle,
+		game.StylePop:                    popStyle,
+		game.StyleFarTerrain:             farTerrainStyle,
+		game.StyleGroundSurface:          groundSurfaceStyle,
+		game.StyleGroundFill:             groundFillStyle,
+		game.StylePterosaur:              pterosaurStyle,
+		game.StylePterosaurCrest:         pterosaurCrestStyle,
+		game.StylePterosaurEye:           pterosaurEyeStyle,
+		game.StylePterosaurWing:          pterosaurWingStyle,
+		game.StylePterosaurWingHighlight: pterosaurWingHighlightStyle,
+		game.StylePterosaurShadow:        pterosaurShadowStyle,
+		game.StylePterosaurBeak:          pterosaurBeakStyle,
 	})
 
 	putCentered(a.screen, 0, width, "JURASSIC BALLOON TERM", titleStyle)
