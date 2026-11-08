@@ -100,6 +100,27 @@ func (a *App) draw() {
 	grazerHeadStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(104, 91, 55)).Bold(true)
 	grazerBeakStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(205, 184, 127)).Bold(true)
 	grazerLegStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(67, 69, 47)).Bold(true)
+	sauropodBodyStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(92, 120, 87)).Bold(true)
+	sauropodHighlightStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(137, 155, 98)).Bold(true)
+	sauropodShadowStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(56, 78, 62)).Bold(true)
+	sauropodNeckStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(105, 132, 91)).Bold(true)
+	sauropodHeadStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(124, 145, 91)).Bold(true)
+	sauropodEyeStyle := tcell.StyleDefault.Foreground(tcell.ColorBlack).Background(color.NewRGBColor(124, 145, 91)).Bold(true)
+	sauropodLegStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(55, 68, 52)).Bold(true)
+	sauropodBodyOchreStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(126, 111, 70)).Bold(true)
+	sauropodHighlightOchreStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(174, 151, 89)).Bold(true)
+	sauropodShadowOchreStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(82, 68, 47)).Bold(true)
+	sauropodNeckOchreStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(140, 122, 74)).Bold(true)
+	sauropodHeadOchreStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(157, 135, 78)).Bold(true)
+	sauropodEyeOchreStyle := tcell.StyleDefault.Foreground(tcell.ColorBlack).Background(color.NewRGBColor(157, 135, 78)).Bold(true)
+	sauropodLegOchreStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(73, 61, 44)).Bold(true)
+	sauropodBodySlateStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(78, 105, 108)).Bold(true)
+	sauropodHighlightSlateStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(119, 145, 139)).Bold(true)
+	sauropodShadowSlateStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(47, 67, 73)).Bold(true)
+	sauropodNeckSlateStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(91, 119, 117)).Bold(true)
+	sauropodHeadSlateStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(107, 132, 125)).Bold(true)
+	sauropodEyeSlateStyle := tcell.StyleDefault.Foreground(tcell.ColorBlack).Background(color.NewRGBColor(107, 132, 125)).Bold(true)
+	sauropodLegSlateStyle := tcell.StyleDefault.Foreground(color.NewRGBColor(47, 62, 64)).Bold(true)
 
 	drawSprites(a.screen, a.model.Sprites(), map[int]tcell.Style{
 		game.StyleBalloon:                      balloonStyle,
@@ -167,6 +188,27 @@ func (a *App) draw() {
 		game.StyleGrazerHead:                   grazerHeadStyle,
 		game.StyleGrazerBeak:                   grazerBeakStyle,
 		game.StyleGrazerLeg:                    grazerLegStyle,
+		game.StyleSauropodBody:                 sauropodBodyStyle,
+		game.StyleSauropodHighlight:            sauropodHighlightStyle,
+		game.StyleSauropodShadow:               sauropodShadowStyle,
+		game.StyleSauropodNeck:                 sauropodNeckStyle,
+		game.StyleSauropodHead:                 sauropodHeadStyle,
+		game.StyleSauropodEye:                  sauropodEyeStyle,
+		game.StyleSauropodLeg:                  sauropodLegStyle,
+		game.StyleSauropodBodyOchre:            sauropodBodyOchreStyle,
+		game.StyleSauropodHighlightOchre:       sauropodHighlightOchreStyle,
+		game.StyleSauropodShadowOchre:          sauropodShadowOchreStyle,
+		game.StyleSauropodNeckOchre:            sauropodNeckOchreStyle,
+		game.StyleSauropodHeadOchre:            sauropodHeadOchreStyle,
+		game.StyleSauropodEyeOchre:             sauropodEyeOchreStyle,
+		game.StyleSauropodLegOchre:             sauropodLegOchreStyle,
+		game.StyleSauropodBodySlate:            sauropodBodySlateStyle,
+		game.StyleSauropodHighlightSlate:       sauropodHighlightSlateStyle,
+		game.StyleSauropodShadowSlate:          sauropodShadowSlateStyle,
+		game.StyleSauropodNeckSlate:            sauropodNeckSlateStyle,
+		game.StyleSauropodHeadSlate:            sauropodHeadSlateStyle,
+		game.StyleSauropodEyeSlate:             sauropodEyeSlateStyle,
+		game.StyleSauropodLegSlate:             sauropodLegSlateStyle,
 	})
 
 	stage := a.model.Stage()
@@ -175,12 +217,16 @@ func (a *App) draw() {
 	if !a.model.Popped() && !a.model.Completed() {
 		a.drawFlightGauges(width, height)
 	}
+	if a.model.Invincible() {
+		a.drawInvincibleIndicator(width)
+	}
 
 	switch {
 	case !a.model.Popped() && !a.model.Completed() && a.overlayAudio && a.overlayTitle != "" && time.Now().Before(a.overlayUntil):
 		drawCenterOverlay(a.screen, a.overlayTitle, a.overlayDetail)
 	case a.model.Paused:
-		drawCenterOverlay(a.screen, "PAUSED", "P resumes")
+		title, detail := a.pauseOverlayText()
+		drawCenterOverlay(a.screen, title, detail)
 	case a.model.PopAnimationComplete():
 		drawCenterOverlay(a.screen, "POPPED!", "CLICK / SPACE / R / ENTER retries")
 	case a.model.Completed() && a.model.StageIndex()+1 == game.StageCount():
@@ -191,6 +237,23 @@ func (a *App) draw() {
 		drawCenterOverlay(a.screen, a.overlayTitle, a.overlayDetail)
 	}
 	a.screen.Show()
+}
+
+func (a *App) pauseOverlayText() (string, string) {
+	stage := a.model.Stage()
+	title := fmt.Sprintf("PAUSED — %d/%d %s", a.model.StageIndex()+1, game.StageCount(), strings.ToUpper(stage.Name))
+	detail := fmt.Sprintf("D %.1f/%.0f  •  Y %.1f  •  V %+.1f  •  P resumes",
+		a.model.Distance(), stage.GoalDistance, a.model.BalloonY(), a.model.VerticalVelocity())
+	return title, detail
+}
+
+func (a *App) drawInvincibleIndicator(width int) {
+	if width < 5 {
+		return
+	}
+	for index, r := range "INV" {
+		drawHUDRune(a.screen, width-4+index, 1, r, color.NewRGBColor(255, 226, 140), true)
+	}
 }
 
 func (a *App) drawFlightGauges(width, height int) {

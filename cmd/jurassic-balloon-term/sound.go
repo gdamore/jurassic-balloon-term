@@ -47,6 +47,10 @@ func (s *gameSound) GroundLightningStruck() {
 	_ = s.engine.Play(audio.CueGroundLightningStrike)
 }
 
+func (s *gameSound) SauropodCalled() {
+	_ = s.engine.Play(audio.CueDistantSauropod)
+}
+
 func (s *gameSound) StageCompleted() {
 	_ = s.engine.SetContinuous(audio.ContinuousBurner, false)
 	_ = s.engine.SetMusic(audio.MusicVictory)

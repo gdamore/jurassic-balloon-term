@@ -98,8 +98,8 @@ func Catalog() audio.Catalog {
 				Bus:      audio.BusAmbience, Gain: 0.18, MaxVoices: 1, Cooldown: 2 * time.Second,
 			},
 			soundSauropod: {
-				Variants: []audio.Clip{recorded("effect_sauropod.ogg")},
-				Bus:      audio.BusAmbience, Gain: 0.2, MaxVoices: 1, Cooldown: 3 * time.Second,
+				Variants: []audio.Clip{{PCM: sauropodBellow()}},
+				Bus:      audio.BusEffects, Gain: 0.46, MaxVoices: 1, Cooldown: 3 * time.Second,
 			},
 			soundCarnivore: {
 				Variants: []audio.Clip{recorded("effect_carnivore.ogg")},
@@ -306,6 +306,35 @@ func growl(start, end float64, duration time.Duration, gain float64, seed int64)
 		noise += (random.Float64()*2 - 1 - noise) * 0.04
 		envelope := math.Sin(math.Pi * progress)
 		sample := (math.Sin(phase) + 0.45*math.Sin(phase*2.03) + noise*0.7) * gain * envelope
+		putStereo(pcm, frame, sample)
+	}
+	return pcm
+}
+
+// sauropodBellow is deliberately more felt than shrieked: a low fundamental,
+// uneven throat harmonics, and a small amount of filtered breath produce a
+// distant chesty call without the wet mouth transient in the old recording.
+func sauropodBellow() []float32 {
+	frames := durationFrames(1800 * time.Millisecond)
+	pcm := make([]float32, frames*2)
+	random := rand.New(rand.NewSource(83))
+	phase := 0.0
+	breath := 0.0
+	for frame := range frames {
+		progress := float64(frame) / float64(frames)
+		t := float64(frame) / audio.DefaultSampleRate
+		frequency := 43 + 10*math.Sin(math.Pi*progress) - 6*progress
+		frequency += 1.8 * math.Sin(2*math.Pi*3.6*t)
+		phase += 2 * math.Pi * frequency / audio.DefaultSampleRate
+		breath += (random.Float64()*2 - 1 - breath) * 0.018
+
+		attack := min(progress/0.09, 1.0)
+		release := min((1-progress)/0.24, 1.0)
+		envelope := math.Sin(math.Pi/2*attack) * math.Sin(math.Pi/2*release)
+		throat := math.Sin(phase) + 0.48*math.Sin(2.02*phase+0.25) + 0.19*math.Sin(3.01*phase)
+		rumble := 0.22 * math.Sin(0.51*phase)
+		roughness := 0.88 + 0.12*math.Sin(2*math.Pi*12.5*t)
+		sample := (throat*roughness + rumble + breath*0.32) * 0.24 * envelope
 		putStereo(pcm, frame, sample)
 	}
 	return pcm

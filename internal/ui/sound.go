@@ -12,6 +12,7 @@ type Sound interface {
 	PterosaurLunged()
 	LightningStruck()
 	GroundLightningStruck()
+	SauropodCalled()
 	StageCompleted()
 	SetMusicEnabled(bool)
 	SetEffectsEnabled(bool)

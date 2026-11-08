@@ -250,6 +250,30 @@ func TestAuthoredPterosaurGroupsAreLimitedAndStaggered(t *testing.T) {
 	}
 }
 
+func TestLongNeckGroveSchedulesSparseHighPterosaurs(t *testing.T) {
+	grove := NewStageModel(120, 40, 3)
+	if grove.stage.Pterosaurs {
+		t.Fatal("Long-Neck Grove enables routine random pterosaurs")
+	}
+	if len(grove.stage.PterosaurGroups) != 3 {
+		t.Fatalf("Long-Neck Grove pterosaur encounters = %d, want 3", len(grove.stage.PterosaurGroups))
+	}
+	for index, group := range grove.stage.PterosaurGroups {
+		if group.Count != 1 || group.RedEyes != 0 || group.Altitude <= 0 || group.Altitude > 0.20 {
+			t.Errorf("encounter %d = %+v, want one ordinary high-flying pterosaur", index, group)
+		}
+	}
+
+	grove.distance = grove.stage.PterosaurGroups[0].Distance
+	grove.spawnScheduledPterosaurGroups()
+	if len(grove.flock) != 1 {
+		t.Fatalf("first grove encounter spawned %d pterosaurs, want 1", len(grove.flock))
+	}
+	if got, want := grove.flock[0].yFraction, grove.stage.PterosaurGroups[0].Altitude; got != want {
+		t.Fatalf("grove pterosaur altitude fraction = %v, want %v", got, want)
+	}
+}
+
 func TestDepartedPterosaurIsReplaced(t *testing.T) {
 	m := NewModel(80, 24)
 	makeAirborne(m)

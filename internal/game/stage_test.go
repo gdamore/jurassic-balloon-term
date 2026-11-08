@@ -67,8 +67,11 @@ func TestStageDefinitionsAreCopied(t *testing.T) {
 	stage.TreeDistances[0] = -1
 	stage.FernDistances[0] = -1
 	stage.GrazerDistances[0] = -1
+	stage = StageAt(3)
+	stage.SauropodDistances[0] = -1
 	canonical := StageAt(0)
-	if canonical.Checkpoints[0] < 0 || canonical.TreeDistances[0] < 0 || canonical.FernDistances[0] < 0 || canonical.GrazerDistances[0] < 0 {
+	canonicalLongNeck := StageAt(3)
+	if canonical.Checkpoints[0] < 0 || canonical.TreeDistances[0] < 0 || canonical.FernDistances[0] < 0 || canonical.GrazerDistances[0] < 0 || canonicalLongNeck.SauropodDistances[0] < 0 {
 		t.Fatal("caller mutated canonical stage slices")
 	}
 }
@@ -128,6 +131,7 @@ func TestContinueToStagePreservesFlightState(t *testing.T) {
 	m.balloon.SetPosition(24, 7.25)
 	m.heat = 0.72
 	m.vy = -2.4
+	m.SetInvincible(true)
 	m.SetBurner(true)
 	m.completeStage()
 
@@ -141,8 +145,8 @@ func TestContinueToStagePreservesFlightState(t *testing.T) {
 	if next.StageIndex() != 1 || next.Grounded() || next.Completed() {
 		t.Fatalf("continued stage state = index:%d grounded:%t completed:%t", next.StageIndex(), next.Grounded(), next.Completed())
 	}
-	if next.BalloonPosition().X != 24 || next.BalloonY() != 7.25 || next.VerticalVelocity() != -2.4 || next.Heat() != 0.72 || !next.BurnerOn() {
-		t.Fatalf("continued flight = position:%v y:%v velocity:%v heat:%v burner:%t", next.BalloonPosition(), next.BalloonY(), next.VerticalVelocity(), next.Heat(), next.BurnerOn())
+	if next.BalloonPosition().X != 24 || next.BalloonY() != 7.25 || next.VerticalVelocity() != -2.4 || next.Heat() != 0.72 || !next.BurnerOn() || !next.Invincible() {
+		t.Fatalf("continued flight = position:%v y:%v velocity:%v heat:%v burner:%t invincible:%t", next.BalloonPosition(), next.BalloonY(), next.VerticalVelocity(), next.Heat(), next.BurnerOn(), next.Invincible())
 	}
 }
 

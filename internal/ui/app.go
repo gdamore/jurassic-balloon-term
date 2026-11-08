@@ -30,6 +30,7 @@ type App struct {
 	credits       bool
 	music         bool
 	effects       bool
+	invincible    bool
 	volume        int
 	keyRelease    bool
 	mouseBurner   bool
@@ -152,6 +153,15 @@ func (a *App) handleEvent(event tcell.Event) bool {
 		}
 		if !a.started {
 			a.handleStartEvent(event)
+			return false
+		}
+		if isInvincibilityEvent(event) {
+			a.invincible = !a.invincible
+			a.model.SetInvincible(a.invincible)
+			a.overlayTitle = "INVINCIBLE " + enabledLabel(a.invincible)
+			a.overlayDetail = "CTRL-I toggles playtest mode"
+			a.overlayUntil = time.Now().Add(audioOverlay)
+			a.overlayAudio = true
 			return false
 		}
 		if a.model.Completed() {
@@ -314,6 +324,7 @@ func (a *App) resetStage(stageIndex int) {
 		width, height = a.screen.Size()
 	}
 	a.model = game.NewStageModel(width, height, stageIndex)
+	a.model.SetInvincible(a.invincible)
 	a.burnerKeys = make(map[burnerKey]struct{})
 	a.mouseBurner = false
 	a.burnerUntil = time.Time{}
@@ -348,6 +359,18 @@ func selectedStage(event *tcell.EventKey) (int, bool) {
 	}
 	index := int(runes[0] - '1')
 	return index, index < game.StageCount()
+}
+
+func isInvincibilityEvent(event *tcell.EventKey) bool {
+	if !event.Pressed() {
+		return false
+	}
+	// In legacy terminal input Ctrl-I is indistinguishable from Tab. Kitty and
+	// Win32 keyboard protocols report the modified rune explicitly.
+	if event.Key() == tcell.KeyTab {
+		return true
+	}
+	return event.Key() == tcell.KeyRune && (event.Str() == "i" || event.Str() == "I") && event.Modifiers()&tcell.ModCtrl != 0
 }
 
 func isQuitEvent(event *tcell.EventKey) bool {
@@ -432,6 +455,8 @@ func (a *App) handleGameEvent(event game.Event) {
 		a.sound.LightningStruck()
 	case game.EventGroundLightningStruck:
 		a.sound.GroundLightningStruck()
+	case game.EventSauropodCalled:
+		a.sound.SauropodCalled()
 	case game.EventStageCompleted:
 		if a.model.StageIndex()+1 >= game.StageCount() {
 			a.sound.SetBurner(false)

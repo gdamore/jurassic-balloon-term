@@ -11,6 +11,7 @@ const (
 	EventPterosaurLunged
 	EventLightningStruck
 	EventGroundLightningStruck
+	EventSauropodCalled
 	EventStageCompleted
 )
 

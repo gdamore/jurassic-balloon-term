@@ -88,6 +88,27 @@ const (
 	StyleGrazerHead
 	StyleGrazerBeak
 	StyleGrazerLeg
+	StyleSauropodBody
+	StyleSauropodHighlight
+	StyleSauropodShadow
+	StyleSauropodNeck
+	StyleSauropodHead
+	StyleSauropodEye
+	StyleSauropodLeg
+	StyleSauropodBodyOchre
+	StyleSauropodHighlightOchre
+	StyleSauropodShadowOchre
+	StyleSauropodNeckOchre
+	StyleSauropodHeadOchre
+	StyleSauropodEyeOchre
+	StyleSauropodLegOchre
+	StyleSauropodBodySlate
+	StyleSauropodHighlightSlate
+	StyleSauropodShadowSlate
+	StyleSauropodNeckSlate
+	StyleSauropodHeadSlate
+	StyleSauropodEyeSlate
+	StyleSauropodLegSlate
 )
 
 const (
@@ -137,6 +158,7 @@ type Model struct {
 	trees               []treeTrack
 	ferns               []fernTrack
 	grazers             []grazerTrack
+	sauropods           []sauropodTrack
 	terrain             []*terrainLayer
 	random              *rand.Rand
 	cloudID             int
@@ -151,6 +173,7 @@ type Model struct {
 	stageIndex          int
 	distance            float64
 	completed           bool
+	invincible          bool
 	grounded            bool
 	scrollSpeed         float64
 	transition          *stageTransition
@@ -185,6 +208,7 @@ func NewStageModel(width, height, stageIndex int) *Model {
 	m.placeBalloonOnGround()
 	m.addStageFerns()
 	m.addStageGrazers()
+	m.addStageSauropods()
 	m.addStageTrees()
 	if !m.stage.DarkCloudsOnly {
 		m.addClouds()
@@ -672,10 +696,23 @@ func (m *Model) addStageGrazers() {
 	m.anchorGrazers()
 }
 
+func (m *Model) addStageSauropods() {
+	for index, distance := range m.stage.SauropodDistances {
+		longNeck := newSauropod(index, distance)
+		longNeck.vocal = index == 0 || distance-m.stage.SauropodDistances[index-1] > sauropodHerdGap
+		longNeck.sprite.SetVelocity(-m.stage.ScrollSpeed, 0)
+		m.positionSauropod(&longNeck)
+		m.sauropods = append(m.sauropods, longNeck)
+		m.scene.Add(longNeck.sprite)
+	}
+	m.anchorSauropods()
+}
+
 func (m *Model) positionGrazer(grazer *grazerTrack) {
 	balloonX, _ := m.balloon.Position()
 	x := balloonX + grazer.distance - m.distance
 	grazer.sprite.SetPosition(x, float64(max(m.Height-grazerHeight-1, 0)))
+	grazer.anchored = false
 }
 
 func (m *Model) anchorGrazers() {
@@ -684,6 +721,9 @@ func (m *Model) anchorGrazers() {
 	}
 	ground := m.terrain[len(m.terrain)-1]
 	for index := range m.grazers {
+		if m.grazers[index].anchored {
+			continue
+		}
 		frame, visible := m.grazers[index].sprite.ActiveFrame()
 		if !visible {
 			continue
@@ -698,6 +738,59 @@ func (m *Model) anchorGrazers() {
 		}
 		if found {
 			m.grazers[index].sprite.SetPosition(x, float64(max(surfaceY-frame.Height+1, 0)))
+			m.grazers[index].anchored = true
+		}
+	}
+}
+
+func (m *Model) positionSauropod(longNeck *sauropodTrack) {
+	balloonX, _ := m.balloon.Position()
+	x := balloonX + longNeck.distance - m.distance
+	longNeck.sprite.SetPosition(x, float64(max(m.Height-sauropodHeight-1, 0)))
+	longNeck.anchored = false
+}
+
+func (m *Model) anchorSauropods() {
+	if len(m.terrain) == 0 {
+		return
+	}
+	ground := m.terrain[len(m.terrain)-1]
+	for index := range m.sauropods {
+		if m.sauropods[index].anchored {
+			continue
+		}
+		frame, visible := m.sauropods[index].sprite.ActiveFrame()
+		if !visible {
+			continue
+		}
+		x, _ := m.sauropods[index].sprite.Position()
+		surfaceY, found := 0, false
+		for _, footX := range sauropodFootColumns {
+			candidate, candidateFound := ground.surfaceYAt(int(math.Floor(x)) + footX)
+			if candidateFound && (!found || candidate > surfaceY) {
+				surfaceY, found = candidate, true
+			}
+		}
+		if found {
+			m.sauropods[index].sprite.SetPosition(x, float64(max(surfaceY-frame.Height+1, 0)))
+			m.sauropods[index].anchored = true
+		}
+	}
+}
+
+func (m *Model) announceSauropods() {
+	for index := range m.sauropods {
+		if !m.sauropods[index].vocal || m.sauropods[index].called {
+			continue
+		}
+		frame, visible := m.sauropods[index].sprite.ActiveFrame()
+		if !visible {
+			continue
+		}
+		x, _ := m.sauropods[index].sprite.Position()
+		if x < float64(m.Width) && x+float64(frame.Width) > 0 {
+			m.sauropods[index].called = true
+			m.events = append(m.events, EventSauropodCalled)
 		}
 	}
 }
@@ -741,14 +834,21 @@ func (m *Model) spawnScheduledPterosaurGroups() {
 			return
 		}
 		m.nextPterosaurGroup++
-		baseFraction := 0.22 + m.random.Float64()*0.50
+		baseFraction := group.Altitude
+		if baseFraction <= 0 {
+			baseFraction = 0.22 + m.random.Float64()*0.50
+		}
 		formation := [...]float64{-0.08, 0.08, 0}
 		for index := range group.Count {
 			profile := ordinaryPterosaurProfile
 			if index >= group.Count-group.RedEyes {
 				profile = redEyePterosaurProfile
 			}
-			fraction := min(max(baseFraction+formation[index%len(formation)], 0.1), 0.9)
+			offset := 0.0
+			if group.Count > 1 {
+				offset = formation[index%len(formation)]
+			}
+			fraction := min(max(baseFraction+offset, 0.1), 0.9)
 			delay := time.Duration(index) * 450 * time.Millisecond
 			hazard := newProfiledPterosaurHazardWithDelay(
 				profile,
@@ -845,7 +945,11 @@ func (m *Model) Resize(width, height int) {
 	for index := range m.grazers {
 		m.positionGrazer(&m.grazers[index])
 	}
+	for index := range m.sauropods {
+		m.positionSauropod(&m.sauropods[index])
+	}
 	m.anchorGrazers()
+	m.anchorSauropods()
 	if m.grounded {
 		m.placeBalloonOnGround()
 	}
@@ -876,6 +980,13 @@ func (m *Model) BurnerOn() bool { return m.burner }
 
 func (m *Model) Popped() bool { return m.popped }
 
+// Invincible reports whether damaging collisions are being ignored for
+// playtesting. Collision detection and all other simulation continue normally.
+func (m *Model) Invincible() bool { return m.invincible }
+
+// SetInvincible enables or disables collision immunity for playtesting.
+func (m *Model) SetInvincible(enabled bool) { m.invincible = enabled }
+
 // PopAnimationComplete reports when the destruction animation has finished
 // and the game is waiting for a retry.
 func (m *Model) PopAnimationComplete() bool { return m.popped && m.stopped }
@@ -905,11 +1016,13 @@ func (m *Model) ContinueToStage(stageIndex int) *Model {
 	next.grounded = false
 	next.heat = m.heat
 	next.vy = m.vy
+	next.invincible = m.invincible
 	next.balloon.SetPosition(x, y)
 	next.balloon.SetVelocity(0, next.vy)
 	next.SetBurner(m.burner)
 	next.beginStageTransition(m)
 	next.anchorGrazers()
+	next.anchorSauropods()
 	next.clampBalloon()
 	return next
 }
@@ -953,6 +1066,7 @@ func (m *Model) Update(step time.Duration) []sprite.Collision {
 		m.popTime += advance
 		m.scene.Update(advance)
 		m.anchorGrazers()
+		m.anchorSauropods()
 		if m.popTime >= balloonPopDuration {
 			m.stopped = true
 		}
@@ -1021,9 +1135,11 @@ func (m *Model) Update(step time.Duration) []sprite.Collision {
 	collisions := m.scene.Update(step)
 	m.updateDepartingScenery()
 	m.anchorGrazers()
+	m.anchorSauropods()
+	m.announceSauropods()
 	for _, collision := range collisions {
 		other, hitsBalloon := collisionWith(m.balloon, collision)
-		if hitsBalloon && (m.isLightningHazard(other) || m.isGroundStormHazard(other) || m.isCeilingHazard(other) || m.isPterosaurHazard(other) || m.isGroundHazard(other) || m.isDepartingHazard(other)) {
+		if hitsBalloon && !m.invincible && (m.isLightningHazard(other) || m.isGroundStormHazard(other) || m.isCeilingHazard(other) || m.isPterosaurHazard(other) || m.isGroundHazard(other) || m.isDepartingHazard(other)) {
 			m.popBalloon()
 			break
 		}
@@ -1163,6 +1279,11 @@ func (m *Model) isGroundHazard(candidate *sprite.Sprite) bool {
 	}
 	for _, grazer := range m.grazers {
 		if grazer.sprite == candidate {
+			return true
+		}
+	}
+	for _, longNeck := range m.sauropods {
+		if longNeck.sprite == candidate {
 			return true
 		}
 	}
