@@ -12,6 +12,8 @@ import (
 )
 
 func main() {
+	browserReady()
+
 	sound, err := newGameSound()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "audio disabled: %v\n", err)

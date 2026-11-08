@@ -42,6 +42,9 @@ document linked above.
 ## Runtime libraries
 
 - [Tcell](https://github.com/gdamore/tcell), Apache License 2.0.
+- [ghostty-web](https://github.com/coder/ghostty-web), MIT License. The browser
+  distribution includes its license alongside the runtime files supplied by
+  Tcell.
 - [Oto](https://github.com/ebitengine/oto), Apache License 2.0.
 - [oggvorbis](https://github.com/jfreymuth/oggvorbis), MIT License,
   Copyright (c) 2016 Johann Freymuth.

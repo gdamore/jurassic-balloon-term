@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#173c59">
+    <title>Jurassic Balloon</title>
+    <meta
+      name="description"
+      content="Fly a leaky improvised balloon through a whimsical prehistoric terminal world."
+    >
+    <script src="wasm_exec.js"></script>
+    <link rel="stylesheet" href="termstyle.css">
+    <link rel="stylesheet" href="site.css">
+  </head>
+  <body>
+    <main aria-label="Jurassic Balloon">
+      <pre
+        id="terminal"
+        data-cols="120"
+        data-rows="40"
+        tabindex="0"
+        aria-label="Jurassic Balloon terminal game"
+      ></pre>
+    </main>
+
+    <section id="launcher" class="launcher" aria-live="polite">
+      <div class="launcher-card">
+        <div class="balloon" aria-hidden="true">◢◤ ● ◥◣</div>
+        <h1>Jurassic Balloon</h1>
+        <p id="load-status">Loading the prehistoric terminal…</p>
+        <button id="launch" type="button" disabled>Loading game…</button>
+        <p class="controls">Hold Space, W, ↑, or the primary mouse button to burn.</p>
+      </div>
+    </section>
+
+    <noscript>This game requires JavaScript and WebAssembly.</noscript>
+    <script>
+      const launcher = document.getElementById("launcher");
+      const launch = document.getElementById("launch");
+      const status = document.getElementById("load-status");
+      const terminal = document.getElementById("terminal");
+
+      let startupFailed = false;
+
+      function reportStartupFailure() {
+        if (launcher.classList.contains("hidden")) {
+          return;
+        }
+        startupFailed = true;
+        launch.disabled = false;
+        launch.textContent = "Reload game";
+        status.textContent = "The browser runtime did not start. Try reloading.";
+      }
+
+      window.addEventListener("error", reportStartupFailure);
+      window.addEventListener("unhandledrejection", reportStartupFailure);
+
+      window.addEventListener("jurassic-balloon-ready", () => {
+        launch.disabled = false;
+        launch.textContent = "Start game";
+        status.textContent = "Ready for takeoff.";
+        launch.focus();
+      }, { once: true });
+
+      launch.addEventListener("click", () => {
+        if (startupFailed) {
+          window.location.reload();
+          return;
+        }
+        launcher.classList.add("hidden");
+        launcher.setAttribute("aria-hidden", "true");
+        terminal.focus();
+      });
+    </script>
+    <script type="module" src="tcell.js"></script>
+  </body>
+</html>

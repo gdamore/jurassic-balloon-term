@@ -32,6 +32,25 @@ Press `C` on the title screen for creator, audio-asset, and technology credits.
 Full attribution and license details are recorded in
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
+## Play in a browser
+
+The same game can be compiled to WebAssembly and hosted as a static site. Build
+the complete browser bundle with:
+
+```sh
+make web
+python3 -m http.server --directory dist/web 8080
+```
+
+Then open <http://localhost:8080/>. The first click on the launch card grants
+the browser permission to start WebAudio; the in-game title screen follows.
+The generated `dist/web` directory includes the Go WebAssembly runtime and
+tcell's Ghostty-based browser terminal, and is ignored by Git.
+
+The `pages` GitHub Actions workflow rebuilds and deploys this bundle whenever
+changes reach `main`. In the repository's Pages settings, select **GitHub
+Actions** as the publishing source if it is not already enabled.
+
 ## Development
 
 ```sh
@@ -42,7 +61,7 @@ make build
 The project borrows its initial loop architecture from
 [Escape from Proxima 5](https://github.com/gdamore/proxima5): input is queued,
 simulation updates happen on a fixed cadence, and rendering is kept separate
-from game state. Jurassic Balloon Term uses current tcell v2 APIs and keeps
+from game state. Jurassic Balloon Term uses current tcell v3 APIs and keeps
 the model testable without a real terminal.
 
 ### About Proxima 5
